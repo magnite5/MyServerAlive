@@ -1,0 +1,41 @@
+package dev.magnoix.msa.messages;
+
+import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.entity.Player;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class Msg {
+
+    private static Logger logger;
+
+    public static void init(Logger pluginLogger) {
+        logger = pluginLogger;
+    }
+
+    public static void log(String message) {
+        if (logger != null) {
+            logger.info(message);
+        } else {
+            Bukkit.getConsoleSender().sendMessage(ChatColor.GRAY + "[LOG]" + message);
+        }
+    }
+
+    public static void log(Level level, String message) {
+        if (logger != null) {
+            logger.log(level, message);
+        } else {
+            Bukkit.getConsoleSender().sendMessage(ChatColor.GRAY + "[" + level + "] " + message);
+        }
+    }
+
+    public void msg(Component message, Player target) {
+        if (target.isConnected()) {
+            target.sendMessage(message);
+        } else
+            log(Level.SEVERE, "Tried to send a message to player " + target + ", but " + target + " is not connected. Skipping.");
+    }
+}
