@@ -9,10 +9,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class Menu {
     private static final Map<UUID, Menu> openMenus = new HashMap<>();
@@ -41,6 +38,42 @@ public class Menu {
         inventory = Bukkit.createInventory(null, size, name);
         this.viewerID = viewerID;
     }
+
+    public void Open(Player player) {
+        player.openInventory(inventory);
+        openMenus.put(player.getUniqueId(), this);
+        if(viewerID != null) {}
+        if(openAction != null) openAction.open(player);
+    }
+
+    public void addViewer(Player player) {
+        if(viewerID == null) return;
+        Set<UUID> list = viewers.getOrDefault(viewerID, new HashSet<>());
+        list.add(player.getUniqueId());
+        viewers.put(viewerID, list);
+    }
+
+    public void removeViewer(Player player) {
+        if (viewerID == null) return;
+        Set<UUID> list = viewers.getOrDefault(viewerID, null);
+        if (list == null) return;
+        list.remove(player.getUniqueId());
+        if (list.isEmpty()) viewers.remove(viewerID);
+        else viewers.put(viewerID, list);
+    }
+
+    public Set<Player> getViewers() {
+        if (viewerID == null) return new HashSet<>();
+        Set<Player> viewerList = new HashSet<>();
+        for(UUID uuid : viewers.getOrDefault(viewerID, new HashSet<>())) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player == null) continue;
+            viewerList.add(player);
+        }
+        return viewerList;
+    }
+
+    public MenuClick getClickAction(int index) { return menuClickActions.getOrDefault(index, null); }
 
     public MenuClick getGeneralClickAction() { return generalClickAction; }
     protected void setGeneralClickAction(MenuClick generalClickAction) { this.generalClickAction = generalClickAction; }
