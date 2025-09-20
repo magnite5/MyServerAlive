@@ -40,25 +40,54 @@ public class Menu {
         this.viewerID = viewerID;
     }
 
-    public void Open(Player player) {
-        player.openInventory(inventory);
-        openMenus.put(player.getUniqueId(), this);
-        if(viewerID != null) {}
-        if(openAction != null) openAction.open(player);
+    public static Menu getMenu(Player p) { return openMenus.getOrDefault(p.getUniqueId(), null); }
+
+    public void Open(Player p) {
+        p.openInventory(inventory);
+        openMenus.put(p.getUniqueId(), this);
+        if(viewerID != null) addViewer(p);
+        if(openAction != null) openAction.open(p);
     }
 
-    public void addViewer(Player player) {
+    public void remove() {
+        openMenus.entrySet().removeIf(entry -> {
+            if(entry.getValue().getUuid().equals(uuid)) {
+                Player p = Bukkit.getPlayer(entry.getKey());
+                if (p != null) {
+                    if (viewerID != null) removeViewer(p);
+                    if (closeAction != null) closeAction.close(p);
+                }
+                return true;
+            } return false;
+        });
+    }
+
+    public UUID getUuid() { return uuid; }
+
+    public void Close(Player p) {
+        p.closeInventory();
+        openMenus.entrySet().removeIf(entry -> {
+            if (entry.getKey().equals(p.getUniqueId())) {
+                if (viewerID != null) removeViewer(p);
+                if (closeAction != null) closeAction.close(p);
+                return true;
+            } return false;
+        });
+    }
+
+
+    private void addViewer(Player p) {
         if(viewerID == null) return;
         Set<UUID> list = viewers.getOrDefault(viewerID, new HashSet<>());
-        list.add(player.getUniqueId());
+        list.add(p.getUniqueId());
         viewers.put(viewerID, list);
     }
 
-    public void removeViewer(Player player) {
+    private void removeViewer(Player p) {
         if (viewerID == null) return;
         Set<UUID> list = viewers.getOrDefault(viewerID, null);
         if (list == null) return;
-        list.remove(player.getUniqueId());
+        list.remove(p.getUniqueId());
         if (list.isEmpty()) viewers.remove(viewerID);
         else viewers.put(viewerID, list);
     }
@@ -67,9 +96,9 @@ public class Menu {
         if (viewerID == null) return new HashSet<>();
         Set<Player> viewerList = new HashSet<>();
         for(UUID uuid : viewers.getOrDefault(viewerID, new HashSet<>())) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player == null) continue;
-            viewerList.add(player);
+            Player p = Bukkit.getPlayer(uuid);
+            if (p == null) continue;
+            viewerList.add(p);
         }
         return viewerList;
     }
