@@ -1,5 +1,6 @@
 package dev.magnoix.msa;
 
+import dev.magnoix.msa.events.MiscEvents;
 import dev.magnoix.msa.messages.Msg;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -11,6 +12,7 @@ public final class MSA extends JavaPlugin {
     public void onEnable() {
         // Plugin startup logic
         Msg.init(this.getLogger());
+        getServer().getPluginManager().registerEvents(new MiscEvents(), this);
 
     }
 

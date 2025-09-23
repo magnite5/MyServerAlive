@@ -3,6 +3,7 @@ package dev.magnoix.msa.menus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -127,5 +128,11 @@ public class Menu {
         inventory.setItem(index, item);
         if (action == null) menuClickActions.remove(item);
         else menuClickActions.put(index,action);
+    }
+
+    public void setBackground(ItemStack item) {
+        for(int i = 0; i < inventory.getSize(); i++) {
+            if(inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) inventory.setItem(i, item);
+        }
     }
 }
