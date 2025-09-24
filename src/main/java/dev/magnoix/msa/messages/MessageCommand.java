@@ -2,18 +2,15 @@ package dev.magnoix.msa.messages;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.mojang.brigadier.Command;
-import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.command.brigadier.argument.resolvers.PlayerProfileListResolver;
-import org.bukkit.Bukkit;
 
 import java.util.Collection;
 import java.util.UUID;
-import java.util.logging.Level;
 
 
 public class MessageCommand {
@@ -40,21 +37,7 @@ public class MessageCommand {
                             id = profile.getId();
                             name = profile.getName();
                         }
-                        boolean online = false;
-                        if (id != null) {
-                            online = Bukkit.getPlayer(id) != null;
-                        } else if (name != null) {
-                            online = Bukkit.getPlayer(name) != null;
-                        } else {
-                            Msg.log(Level.SEVERE,"Failed to send message to player: " + name + ". Skipping.");
-                            return Command.SINGLE_SUCCESS;
-                        }
-                        if (online) {
-                            ctx.getSource().getSender().sendPlainMessage(
-                                    "Sent message to " + name + ": " + message
-                            );
-                            Msg.msg(message, Bukkit.getPlayer(id));
-                        }
+                            if (name != null && id != null) Msg.safeWhisper(id, new MailManager.MailEntry(name, message));
                         return Command.SINGLE_SUCCESS;
                     })
                 )
