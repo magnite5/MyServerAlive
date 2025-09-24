@@ -33,10 +33,12 @@ public class MiscEvents implements Listener {
         Menu menu = Menu.getMenu(p);
         if (menu != null) {
             event.setCancelled(true);
-            if (event.getClickedInventory() != null) {
-                if (event.getRawSlot() > event.getClickedInventory().getSize()) {
-                    if (menu.getGeneralInvClickAction() != null) menu.getGeneralClickAction().click(p, event); // Click in own inventory.
-                } else if (menu.getGeneralClickAction() != null) menu.getGeneralClickAction().click(p, event); // Click in open menu.
+            if (event.getRawSlot() >= menu.getInventory().getSize()) {
+                if (menu.getGeneralInvClickAction() != null) {
+                    menu.getGeneralInvClickAction().click(p, event);
+                }
+            } else if (menu.getGeneralClickAction() != null) {
+                menu.getGeneralClickAction().click(p, event);
             }
 
             Menu.MenuClick menuClick = menu.getClickAction(event.getRawSlot());
