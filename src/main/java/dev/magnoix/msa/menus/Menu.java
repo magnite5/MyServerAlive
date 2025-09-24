@@ -135,4 +135,9 @@ public class Menu {
             if(inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) inventory.setItem(i, item);
         }
     }
+    public void setRow(int row, ItemStack item) {
+        for(int i = 0; i < inventory.getSize(); i++) {
+            if(i % 9 == row && (inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) ) inventory.setItem(i, item);
+        }
+    }
 }

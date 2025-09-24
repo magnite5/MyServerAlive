@@ -1,5 +1,6 @@
 package dev.magnoix.msa.messages;
 
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -83,7 +84,13 @@ public class Mail {
             e.printStackTrace();
         }
     }
-
+    public void sendMessage(UUID target, MailType mailType, MailEntry mailEntry) {
+        if (Bukkit.getPlayer(target) != null) {
+            Bukkit.getPlayer(target).sendMessage(mailEntry.message());
+        } else {
+            addMail(target, mailType, mailEntry);
+        }
+    }
     /*
      * Get all mail of a certain type sent to a specified player.
      * @param uuid Player UUID

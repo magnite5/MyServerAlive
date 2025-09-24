@@ -32,7 +32,13 @@ public class Msg {
         }
     }
 
-    public void msg(Component message, Player target) {
+    public static void msg(Component message, Player target) {
+        if (target.isConnected()) {
+            target.sendMessage(message);
+        } else
+            log(Level.SEVERE, "Tried to send a message to player " + target + ", but " + target + " is not connected. Skipping.");
+    }
+    public static void msg(String message, Player target) {
         if (target.isConnected()) {
             target.sendMessage(message);
         } else
