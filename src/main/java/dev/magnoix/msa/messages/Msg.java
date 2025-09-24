@@ -41,6 +41,12 @@ public class Msg {
         } else
             log(Level.SEVERE, "Tried to send a message to player " + target + ", but " + target + " is not connected. Skipping.");
     }
+    public static void msg(String message, Player target) {
+        if (target.isConnected()) {
+            target.sendMessage(message);
+        } else
+            log(Level.SEVERE, "Tried to send a message to player " + target + ", but " + target + " is not connected. Skipping.");
+    }
     /*
      * Send a message to a player or add it to the mail if the player is offline.
      */

@@ -118,6 +118,9 @@ public class Menu {
     protected void setOpenAction(MenuOpen openAction) { this.openAction = openAction; }
     protected void setCloseAction(MenuClose closeAction) { this.closeAction = closeAction; }
 
+    public int getSize() { return inventory.getSize(); }
+    public Inventory getInventory() { return inventory; }
+
     public interface MenuClick { void click(Player p, InventoryClickEvent event); }
     public interface MenuDrag { void drag(Player p, InventoryDragEvent event); }
     public interface MenuOpen { void open(Player p); }

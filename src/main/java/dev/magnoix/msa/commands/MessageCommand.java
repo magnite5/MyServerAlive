@@ -1,9 +1,11 @@
-package dev.magnoix.msa.messages;
+package dev.magnoix.msa.commands;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import dev.magnoix.msa.messages.MailManager;
+import dev.magnoix.msa.messages.Msg;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
