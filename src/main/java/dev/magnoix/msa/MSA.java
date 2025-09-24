@@ -1,8 +1,11 @@
 package dev.magnoix.msa;
 
+import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.events.MiscEvents;
 import dev.magnoix.msa.messages.MailManager;
 import dev.magnoix.msa.messages.Msg;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.logging.Logger;
@@ -16,6 +19,14 @@ public final class MSA extends JavaPlugin {
 
         Msg.init(this.mailManager, this.getLogger());
         getServer().getPluginManager().registerEvents(new MiscEvents(), this);
+
+        this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
+            LiteralCommandNode<CommandSourceStack> messageNode = dev.magnoix.msa.commands.MessageCommand.create();
+            LiteralCommandNode<CommandSourceStack> testNode = dev.magnoix.msa.commands.TestCommand.create();
+
+            commands.registrar().register(messageNode);
+            commands.registrar().register(testNode);
+        });
 
     }
 

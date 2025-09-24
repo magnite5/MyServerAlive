@@ -16,9 +16,8 @@ import java.util.UUID;
 
 
 public class MessageCommand {
-
     // Java
-    public static LiteralCommandNode<CommandSourceStack> playerArgument() {
+    public static LiteralCommandNode<CommandSourceStack> create() {
         return Commands.literal("message")
             .then(Commands.argument("target", ArgumentTypes.playerProfiles())
                 .then(Commands.argument("message", StringArgumentType.greedyString())
