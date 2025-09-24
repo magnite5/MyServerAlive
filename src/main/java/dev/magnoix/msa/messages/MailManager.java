@@ -3,17 +3,17 @@ package dev.magnoix.msa.messages;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-public class Mail {
+public class MailManager {
 
     private final File playerDataFolder;
 
-    public Mail(File playerDataFolder) {
+    public MailManager(File playerDataFolder) {
         this.playerDataFolder = playerDataFolder;
         if (!playerDataFolder.exists()) playerDataFolder.mkdirs();
     }
@@ -82,13 +82,6 @@ public class Mail {
             config.save(file);
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-    public void sendMessage(UUID target, MailType mailType, MailEntry mailEntry) {
-        if (Bukkit.getPlayer(target) != null) {
-            Bukkit.getPlayer(target).sendMessage(mailEntry.message());
-        } else {
-            addMail(target, mailType, mailEntry);
         }
     }
     /*
