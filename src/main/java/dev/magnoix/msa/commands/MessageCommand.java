@@ -34,7 +34,7 @@ public class MessageCommand {
                             id = profile.getId();
                             name = profile.getName();
                         }
-                            if (name != null && id != null) Msg.safeWhisper(id, new MailManager.MailEntry(name, message));
+                            if (name != null && id != null) Msg.safeWhisper(id, new MailManager.MailEntry(name, message)); // TODO: MailEntry
                         return Command.SINGLE_SUCCESS;
                     })
                 )

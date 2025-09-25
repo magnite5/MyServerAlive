@@ -53,10 +53,10 @@ public class MailManager {
     /**
      * Immutable mail entry consisting of a sender name and a message body.
      *
-     * @param sender  non-null sender identifier (e.g., player name or "Server")
-         * @param message non-null message content
+     * @param sender  non-null sender identifier (e.g., player uuid or "Server")
+     * @param message non-null message content
      */
-    public record MailEntry(String sender, String message) {}
+    public record MailEntry(String sender, String message) {} // TODO: Change all instances to use UUIDs
 
     private File getMailFile(UUID uuid) {
         File playerFolder = new File(playerDataFolder, uuid.toString());

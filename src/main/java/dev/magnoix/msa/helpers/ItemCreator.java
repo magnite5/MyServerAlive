@@ -1,15 +1,18 @@
 package dev.magnoix.msa.helpers;
 
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class ItemCreator {
 
@@ -93,6 +96,15 @@ public class ItemCreator {
         if (flags != null && !flags.isEmpty()) itemMeta.addItemFlags(flags.toArray(new ItemFlag[0]));
         itemMeta.setCustomModelDataComponent(customModelDataComponent);
         item.setItemMeta(itemMeta);
+        return item;
+    }
+
+    public static ItemStack skull(UUID uuid, Component name, List<Component> lore) {
+        ItemStack item = create(Material.PLAYER_HEAD, name, lore);
+        SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
+        if (skullMeta == null) return item;
+        skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(uuid));
+        item.setItemMeta(skullMeta);
         return item;
     }
 
