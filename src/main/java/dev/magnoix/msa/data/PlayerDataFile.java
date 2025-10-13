@@ -1,4 +1,4 @@
-package dev.magnoix.msa.helpers;
+package dev.magnoix.msa.data;
 
 
 import org.bukkit.configuration.file.FileConfiguration;
@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import java.io.File;
 import java.util.UUID;
 
+@Deprecated
 public class PlayerDataFile {
 
     private final UUID uuid;
@@ -55,12 +56,6 @@ public class PlayerDataFile {
 
     // Convenience Methods
 
-    /**
-     * Convenience: Load player mail file.
-     */
-    public static PlayerDataFile loadMail(File dataFolder, Player player) {
-        return new PlayerDataFile(dataFolder, player.getUniqueId(), "mail.yml");
-    }
     /**
      * Convenience: Load player stats file.
      */
