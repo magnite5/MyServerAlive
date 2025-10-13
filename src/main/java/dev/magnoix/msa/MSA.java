@@ -2,13 +2,13 @@ package dev.magnoix.msa;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.slikey.effectlib.EffectManager;
-import dev.magnoix.msa.data.PlayerStatistics;
 import dev.magnoix.msa.events.MiscEvents;
 import dev.magnoix.msa.messages.Msg;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.logging.Logger;
 
@@ -38,11 +38,13 @@ public final class MSA extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
-        effectManager.dispose();
+        if (effectManager != null) {
+            effectManager.dispose();
+        }
     }
 
     @Override
-    public Logger getLogger() {
+    public @NotNull Logger getLogger() {
         return super.getLogger();
     }
 

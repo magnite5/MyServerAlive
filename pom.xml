@@ -38,26 +38,34 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <relocations>
+                                <relocation>
+                                    <pattern>de.slikey.effectlib</pattern>
+                                    <shadedPattern>dev.magnoix.msa.libs.effectlib</shadedPattern>
+                                </relocation>
+                            </relocations>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>com.elmakers.mine.bukkit:EffectLib</artifact>
+                                    <excludes>
+                                        <exclude>plugin.yml</exclude>
+                                        <exclude>migrate.php</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <relocations>
-                        <relocation>
-                            <pattern>com.elmakers.mine.bukkit.effectlib</pattern>
-                            <shadedPattern>dev.magnoix.myserveralive.effectlib</shadedPattern>
-                        </relocation>
-                    </relocations>
-                    <filters>
-                        <filter>
-                            <artifact>com.elmakers.mine.bukkit:EffectLib</artifact>
-                            <excludes>
-                                <exclude>plugin.yml</exclude>
-                                <exclude>META-INF/MANIFEST.MF</exclude>
-                            </excludes>
-                        </filter>
-                    </filters>
-                    <minimizeJar>false</minimizeJar>
-                </configuration>
             </plugin>
         </plugins>
         <resources>
