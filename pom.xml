@@ -40,6 +40,24 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <relocations>
+                        <relocation>
+                            <pattern>com.elmakers.mine.bukkit.effectlib</pattern>
+                            <shadedPattern>dev.magnoix.myserveralive.effectlib</shadedPattern>
+                        </relocation>
+                    </relocations>
+                    <filters>
+                        <filter>
+                            <artifact>com.elmakers.mine.bukkit:EffectLib</artifact>
+                            <excludes>
+                                <exclude>plugin.yml</exclude>
+                                <exclude>META-INF/MANIFEST.MF</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                    <minimizeJar>false</minimizeJar>
+                </configuration>
             </plugin>
         </plugins>
         <resources>
@@ -55,6 +73,10 @@
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
+        <repository>
+            <id>elMakers</id>
+            <url>http://maven.elmakers.com/repository/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -63,6 +85,12 @@
             <artifactId>paper-api</artifactId>
             <version>1.21.7-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.elmakers.mine.bukkit</groupId>
+            <artifactId>EffectLib</artifactId>
+            <version>10.10</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>
