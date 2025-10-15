@@ -15,12 +15,12 @@ public record PlayerEvents(StatisticsManager statisticsManager) implements Liste
         Player p = event.getEntity();
         Player k = p.getKiller();
         try {
-            statisticsManager.addDeaths(p, 1);
+            statisticsManager.addDeaths(p.getUniqueId(), 1);
         } catch (SQLException e) {
             e.printStackTrace();
         }
         if (k != null) try {
-            statisticsManager.addKills(k, 1);
+            statisticsManager.addKills(k.getUniqueId(), 1);
         } catch (SQLException e) {
             e.printStackTrace();
         }
