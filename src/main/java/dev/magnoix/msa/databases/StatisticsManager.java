@@ -2,13 +2,16 @@ package dev.magnoix.msa.databases;
 
 import dev.magnoix.msa.messages.Msg;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public class StatisticsManager {
+public class StatisticsManager { //TODO: Use Long or Double instead of int for statistic values
 
     private final Connection connection;
 
@@ -187,5 +190,24 @@ public class StatisticsManager {
     }
     public void multiplyNetworth(UUID uuid, double multiplier) throws SQLException {
         setNetworth(uuid, (int) (getNetworth(uuid) * multiplier));
+    }
+
+    public record LeaderboardEntry(UUID player, double value) {}
+
+    public List<LeaderboardEntry> getTopPlayers(String statistic, int limit) throws SQLException {
+        List<LeaderboardEntry> leaderboard = new ArrayList<>();
+        if (VALID_COLUMNS.contains(statistic.trim().toLowerCase())) return leaderboard;
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid, " + statistic + " FROM statistics ORDER BY " + statistic + " DESC LIMIT ?")) {
+            preparedStatement.setInt(1, limit);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                UUID uuid = UUID.fromString(resultSet.getString("uuid"));
+                double value = resultSet.getInt(statistic);
+                leaderboard.add(new LeaderboardEntry(uuid, value));
+            }
+        }
+        return leaderboard;
     }
 }

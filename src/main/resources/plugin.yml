@@ -2,3 +2,8 @@ name: msa
 version: '1.0'
 main: dev.magnoix.msa.MSA
 api-version: '1.21'
+commands:
+  statistic:
+    description: Command to Get and Modify a player's statistics
+    usage: /stat <get|set|add|multiply|reset> <target> <statistic type> [value]
+    aliases: [stat,stats,statistics]
