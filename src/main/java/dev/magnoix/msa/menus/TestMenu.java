@@ -1,6 +1,6 @@
 package dev.magnoix.msa.menus;
 
-import dev.magnoix.msa.helpers.ItemCreator;
+import dev.magnoix.msa.utils.ItemCreator;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;

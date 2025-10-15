@@ -1,4 +1,4 @@
-package dev.magnoix.msa;
+package dev.magnoix.msa.commands;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
@@ -14,7 +14,7 @@ import org.bukkit.entity.Player;
 
 import java.util.logging.Level;
 
-public class ParticleTest {
+public class ParticleTestCommand {
     public static LiteralCommandNode<CommandSourceStack> create(EffectManager effectManager) {
         return Commands.literal("particletest")
             .then(Commands.argument("x", IntegerArgumentType.integer())

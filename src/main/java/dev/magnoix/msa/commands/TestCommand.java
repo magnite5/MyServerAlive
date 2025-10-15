@@ -2,7 +2,7 @@ package dev.magnoix.msa.commands;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import dev.magnoix.msa.helpers.ItemCreator;
+import dev.magnoix.msa.utils.ItemCreator;
 import dev.magnoix.msa.menus.Menu;
 import dev.magnoix.msa.messages.Msg;
 import io.papermc.paper.command.brigadier.CommandSourceStack;

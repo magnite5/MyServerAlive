@@ -1,4 +1,4 @@
-package dev.magnoix.msa.helpers;
+package dev.magnoix.msa.utils;
 
 import net.kyori.adventure.text.Component;
 
