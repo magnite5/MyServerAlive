@@ -1,16 +1,11 @@
 package dev.magnoix.msa.databases;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class TitleManager {
-    /*
-    End goal: 3 separate tables;
-    1. players -> Stores player uuid and the id of the active title
-    2. player_titles -> Stores players and title ids. Will contain a single player many times. (maybe also include a timestamp of when the player was given the title?)
-    3. titles -> Stores title ids, with their display names (prefixes) and other metadata
-     */
 
     private final Connection connection;
 
@@ -27,19 +22,366 @@ public class TitleManager {
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS players (
                     uuid VARCHAR(36) PRIMARY KEY,
-                    selected_title INTEGER,
-                    FOREIGN KEY (selected_title) REFERENCES titles(title_id) ON DELETE CASCADE ON UPDATE CASCADE
+                    active_title INTEGER,
+                    FOREIGN KEY (active_title) REFERENCES titles(title_id) ON DELETE CASCADE ON UPDATE CASCADE
+                );"""
+            );
+            statement.execute("""
+                CREATE TABLE IF NOT EXISTS title_relations (
+                    prerequisite_id INTEGER,
+                    successor_id INTEGER,
+                    PRIMARY KEY (prerequisite_id, successor_id),
+                    FOREIGN KEY (prerequisite_id) REFERENCES titles(title_id) ON DELETE CASCADE ON UPDATE CASCADE,
+                    FOREIGN KEY (successor_id) REFERENCES titles(title_id) ON DELETE CASCADE ON UPDATE CASCADE
                 );"""
             );
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS player_titles (
                     uuid VARCHAR(36),
                     title_id INTEGER,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (uuid, title_id),
                     FOREIGN KEY (uuid) REFERENCES players(uuid) ON DELETE CASCADE ON UPDATE CASCADE,
                     FOREIGN KEY (title_id) REFERENCES titles(title_id) ON DELETE CASCADE ON UPDATE CASCADE
                 );"""
             );
+        }
+    }
+
+    /*
+    TODO:
+        - Create methods to:
+            - Get relation count / depth
+            - Modify a title
+            - Get players who have a title
+            - (Optional) Give / revoke all titles to / from a player
+            - (Optional) Batch Operation support
+     */
+
+    public record title(int id, String name, String prefix) {}
+
+    // --- Title Management ---
+
+    /**
+     * Creates a new title.
+     * @param name The name of the new title.
+     * @param prefix The prefix of the new title.
+     * @return The newly created title record.
+     * @throws SQLException If a database access error occurs.
+     */
+    public title createTitle(String name, String prefix) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO titles (name, prefix) VALUES (?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+            preparedStatement.setString(1, name);
+            preparedStatement.setString(2, prefix);
+            preparedStatement.executeUpdate();
+
+            try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    int titleId = generatedKeys.getInt(1);
+                    return new title(titleId, name, prefix);
+                } else {
+                    throw new SQLException("Creating title failed, no ID obtained.");
+                }
+            }
+        }
+    }
+
+    /**
+     * Creates a new title and establishes relations to other titles.
+     * @param name The name of the new title.
+     * @param prefix The prefix of the new title.
+     * @param prerequisiteIds List of title IDs that are prerequisites for this new title.
+     * @param successorIds List of title IDs that this new title is a prerequisite for.
+     * @return The newly created title record.
+     * @throws SQLException If a database access error occurs.
+     */
+    public title createTitle(String name, String prefix, List<Integer> prerequisiteIds, List<Integer> successorIds) throws SQLException {
+        title newTitle = createTitle(name, prefix);
+        int newTitleId = newTitle.id();
+
+        if (prerequisiteIds != null) {
+            for (int prerequisiteId : prerequisiteIds) {
+                addRelation(prerequisiteId, newTitleId);
+            }
+        }
+        if (successorIds != null) {
+            for (int successorId : successorIds) {
+                addRelation(newTitleId, successorId);
+            }
+        }
+        return newTitle;
+    }
+
+    /**
+     * Retrieves a title record by its unique ID.
+     * @param id The ID of the title to retrieve.
+     * @return The title record, or null if not found.
+     * @throws SQLException If a database access error occurs.
+     */
+    public title getTitle(int id) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT name, prefix FROM titles WHERE title_id = ?")) {
+            preparedStatement.setInt(1, id);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return new title(id, resultSet.getString("name"), resultSet.getString("prefix"));
+            } else {
+                return null;
+            }
+        }
+    }
+
+    /**
+     * Retrieves a list of all title records.
+     * @return A list of all title records
+     * @throws SQLException If a database access error occurs.
+     */
+    public List<title> getAllTitles() throws SQLException {
+        List<title> titles = new ArrayList<>();
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM titles")) {
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    int titleId = resultSet.getInt("title_id");
+                    String name = resultSet.getString("name");
+                    String prefix = resultSet.getString("prefix");
+                    titles.add(new title(titleId, name, prefix));
+                }
+            }
+        }
+        return titles;
+    }
+
+    /**
+     * Deletes a title.
+     * @param titleId The id of the title to delete.
+     * @return True if the title was deleted, false otherwise.
+     * @throws SQLException If a database access error occurs.
+     */
+    public boolean deleteTitle(int titleId) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM titles WHERE title_id = ?")) {
+            preparedStatement.setInt(1, titleId);
+            int affectedRows = preparedStatement.executeUpdate();
+            return affectedRows > 0;
+        }
+    }
+
+    // --- Player Title Management ---
+
+    /**
+     * Grants a title to a player.
+     * @param uuid The UUID of the player.
+     * @param titleId The ID of the title to grant.
+     * @param setAsActive Whether to set the title as the player's active title.
+     * @throws SQLException If a database access error occurs.
+     */
+    public void giveTitle(UUID uuid, int titleId, boolean setAsActive) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT OR IGNORE INTO players (uuid) VALUES (?);")) {
+            preparedStatement.setString(1, uuid.toString());
+            preparedStatement.executeUpdate();
+        }
+        try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT OR IGNORE INTO player_titles (uuid, title_id) VALUES (?, ?);")) {
+            preparedStatement.setString(1, uuid.toString());
+            preparedStatement.setInt(2, titleId);
+            preparedStatement.executeUpdate();
+        }
+        if (setAsActive) {
+            setActiveTitle(uuid, titleId);
+        }
+    }
+
+    /**
+     * Grants a title to a player without setting it as active.
+     * @param uuid The UUID of the player.
+     * @param titleId The ID of the title to grant.
+     * @throws SQLException If a database access error occurs.
+     */
+    public void giveTitle(UUID uuid, int titleId) throws SQLException {
+        giveTitle(uuid, titleId, false);
+    }
+
+    /**
+     * Removes a title from a player.
+     * @param uuid The UUID of the player.
+     * @param titleId The ID of the title to revoke.
+     * @throws SQLException If a database access error occurs.
+     */
+    public void revokeTitle(UUID uuid, int titleId) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM player_titles WHERE uuid = ? AND title_id = ?")) {
+            preparedStatement.setString(1, uuid.toString());
+            preparedStatement.setInt(2, titleId);
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    /**
+     * Retrieves a list of all title records a player has unlocked.
+     * @param uuid The UUID of the player.
+     * @return A list of title records.
+     * @throws SQLException If a database access error occurs.
+     */
+    public List<title> getTitles(UUID uuid) throws SQLException {
+        List<title> titles = new ArrayList<>();
+        String sql = """
+            SELECT t.title_id, t.name, t.prefix
+            FROM player_titles pt
+            JOIN titles t ON pt.title_id = t.title_id
+            WHERE pt.uuid = ?
+        """;
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, uuid.toString());
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    int titleId = resultSet.getInt("title_id");
+                    String name = resultSet.getString("name");
+                    String prefix = resultSet.getString("prefix");
+                    titles.add(new title(titleId, name, prefix));
+                }
+            }
+        }
+        return titles;
+    }
+
+    /**
+     * Checks if a player has a specific title.
+     * @param uuid The UUID of the player.
+     * @param titleId The ID of the title to check for.
+     * @return True if the player has the title, false otherwise.
+     * @throws SQLException If a database access error occurs.
+     */
+    public boolean hasTitle(UUID uuid, int titleId) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT 1 FROM player_titles WHERE uuid = ? AND title_id = ?")) {
+            preparedStatement.setString(1, uuid.toString());
+            preparedStatement.setInt(2, titleId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            return resultSet.next();
+        }
+    }
+
+    // --- Active Title Management ---
+
+    /**
+     * Sets a player's active title.
+     * @param uuid The UUID of the player.
+     * @param titleId The ID of the title to set as active.
+     * @throws SQLException If a database access error occurs.
+     */
+    public void setActiveTitle(UUID uuid, int titleId) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE players SET active_title = ? WHERE uuid = ?")) {
+            preparedStatement.setInt(1, titleId);
+            preparedStatement.setString(2, uuid.toString());
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    /**
+     * Retrieves the record of a player's active title.
+     * @param uuid The UUID of the player.
+     * @return The active title record, or null if not set.
+     * @throws SQLException If a database access error occurs.
+     */
+    public title getActiveTitle(UUID uuid) throws SQLException {
+        int titleId = getActiveTitleId(uuid);
+        if (titleId == -1) return null;
+        return getTitle(titleId);
+    }
+
+    /**
+     * Gets the active title ID for a specific player.
+     * @param uuid The UUID of the player.
+     * @return The active title ID, or -1 if no active title is set.
+     * @throws SQLException If a database access error occurs.
+     */
+    public int getActiveTitleId(UUID uuid) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT active_title FROM players WHERE uuid = ?")) {
+            preparedStatement.setString(1, uuid.toString());
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) return resultSet.getInt("active_title");
+            return -1; // indicates "None Found"
+        }
+    }
+
+    // --- Title Relationships ---
+
+    /**
+     * Adds a prerequisite-successor relationship between two titles.
+     * @param prerequisiteId The ID of the prerequisite title.
+     * @param successorId The ID of the successor title.
+     * @throws SQLException If a database access error occurs.
+     */
+    public void addRelation(int prerequisiteId, int successorId) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO title_relations (prerequisite_id, successor_id) VALUES (?, ?)")) {
+            preparedStatement.setInt(1, prerequisiteId);
+            preparedStatement.setInt(2, successorId);
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    /**
+     * Removes a relationship between two titles.
+     * @param prerequisiteId The ID of the prerequisite title.
+     * @param successorId The ID of the successor title.
+     * @throws SQLException If a database access error occurs.
+     */
+    public void removeRelation(int prerequisiteId, int successorId) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM title_relations WHERE prerequisite_id = ? AND successor_id = ?")) {
+            preparedStatement.setInt(1, prerequisiteId);
+            preparedStatement.setInt(2, successorId);
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    /**
+     * Retrieves a list of titles that are prerequisites for a given title.
+     * @param successorId The ID of the title for which to find prerequisites.
+     * @return A list of prerequisite titles.
+     * @throws SQLException If a database access error occurs.
+     */
+    public List<title> getPrerequisiteTitles(int successorId) throws SQLException {
+        List<title> prerequisiteTitles = new ArrayList<>();
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT prerequisite_id FROM title_relations WHERE successor_id = ?")) {
+            preparedStatement.setInt(1, successorId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                int prerequisiteId = resultSet.getInt("prerequisite_id");
+                prerequisiteTitles.add(getTitle(prerequisiteId));
+            }
+        }
+        return prerequisiteTitles;
+    }
+
+    /**
+     * Retrieves a list of titles that can be unlocked from a given prerequisite title.
+     * @param prerequisiteId The ID of the prerequisite title.
+     * @return A list of successor titles.
+     * @throws SQLException If a database access error occurs.
+     */
+    public List<title> getSuccessorTitles(int prerequisiteId) throws SQLException {
+        List<title> successorTitles = new ArrayList<>();
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT successor_id FROM title_relations WHERE prerequisite_id = ?")) {
+            preparedStatement.setInt(1, prerequisiteId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                int successorId = resultSet.getInt("successor_id");
+                successorTitles.add(getTitle(successorId));
+            }
+        }
+        return successorTitles;
+    }
+
+    /**
+     * Checks if a relationship exists between two titles.
+     * @param prerequisiteId The ID of the prerequisite title.
+     * @param successorId The ID of the successor title.
+     * @return True if a relationship exists, false otherwise.
+     * @throws SQLException If a database access error occurs.
+     */
+    public boolean hasRelation(int prerequisiteId, int successorId) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT 1 FROM title_relations WHERE prerequisite_id = ? AND successor_id = ?")) {
+            preparedStatement.setInt(1, prerequisiteId);
+            preparedStatement.setInt(2, successorId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            return resultSet.next();
         }
     }
 }
