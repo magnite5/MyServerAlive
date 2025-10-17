@@ -93,7 +93,7 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
 
     /**
      * Gets a specific statistic for a player.
-     * @param uuid The UUID of the player.
+     * @param uuid      The UUID of the player.
      * @param statistic The name of the statistic to retrieve.
      * @return The value of the statistic.
      * @throws SQLException If a database access error occurs.
@@ -113,9 +113,9 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
 
     /**
      * Sets a specific statistic for a player to a given value.
-     * @param uuid The UUID of the player.
+     * @param uuid      The UUID of the player.
      * @param statistic The name of the statistic to set.
-     * @param value The new value for the statistic.
+     * @param value     The new value for the statistic.
      * @throws SQLException If a database access error occurs.
      * @throws IllegalArgumentException If the statistic name is invalid.
      */
@@ -132,9 +132,9 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
 
     /**
      * Adds a value to a player's specific statistic.
-     * @param uuid The UUID of the player.
+     * @param uuid      The UUID of the player.
      * @param statistic The name of the statistic to modify.
-     * @param value The value to add.
+     * @param value     The value to add.
      * @throws SQLException If a database access error occurs.
      */
     public void addStatistic(UUID uuid, String statistic, int value) throws SQLException {
@@ -145,8 +145,8 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
 
     /**
      * Multiplies a player's specific statistic by a given multiplier.
-     * @param uuid The UUID of the player.
-     * @param statistic The name of the statistic to modify.
+     * @param uuid       The UUID of the player.
+     * @param statistic  The name of the statistic to modify.
      * @param multiplier The multiplier to apply.
      * @throws SQLException If a database access error occurs.
      */
@@ -212,12 +212,12 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
         multiplyStatistic(uuid, "networth", multiplier);
     }
 
-    public record LeaderboardEntry(UUID player, double value) {}
+    public record LeaderboardEntry(UUID player, double value) {} //TODO: Add support for leaderboard position
 
     /**
      * Gets the top players for a given statistic.
      * @param statistic The name of the statistic.
-     * @param limit The maximum number of players to return.
+     * @param limit     The maximum number of players to return.
      * @return A list of LeaderboardEntry records, sorted by the statistic.
      * @throws SQLException If a database access error occurs.
      */
@@ -236,5 +236,53 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
             }
         }
         return leaderboard;
+    }
+
+    /**
+     * Retrieves a list of leaderboard entries for a given statistic, ordered descending.
+     * Uses SQL LIMIT and OFFSET for pagination.
+     *
+     * @param statistic The statistic column to sort and fetch (e.g. "kills"). Must be in VALID_COLUMNS.
+     * @param limit     The number of leaderboard entries to return. Must be >= 1.
+     * @param offset    The number of top entries to skip (0-based). Must be >= 0.
+     * @return A list of LeaderboardEntry objects for the specified range.
+     * @throws IllegalArgumentException If an invalid statistic, limit, or offset is provided.
+     * @throws SQLException             If a database access error occurs.
+     */
+    public List<LeaderboardEntry> getTopPlayers(String statistic, int limit, int offset) throws SQLException {
+        if (!VALID_COLUMNS.contains(statistic.trim().toLowerCase())) throw new IllegalArgumentException("Invalid Statistic: " + statistic);
+        if (limit < 1 || offset < 0) throw new IllegalArgumentException("Invalid limit or offset: " + limit + "-" + offset + ". limit must be >= 1 and offset must be >= 0.");
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid, " + statistic + " FROM statistics ORDER BY " + statistic + " DESC LIMIT ? OFFSET ?")) {
+            preparedStatement.setInt(1, limit);
+            preparedStatement.setInt(2, offset);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            List<LeaderboardEntry> leaderboard = new ArrayList<>();
+            while (resultSet.next()) {
+                UUID uuid = UUID.fromString(resultSet.getString("uuid"));
+                double value = resultSet.getInt(statistic);
+                leaderboard.add(new LeaderboardEntry(uuid, value));
+            }
+            return leaderboard;
+        }
+    }
+
+    /**
+     * Retrieves a list of leaderboard entries for a given statistic from a specific rank range (inclusive).
+     * Converts startIndex and endIndex to proper limit and offset, then delegates to getTopPlayers.
+     *
+     * @param statistic  The statistic column to sort and fetch (e.g. "kills"). Must be in VALID_COLUMNS.
+     * @param startIndex The 1-based index of the first rank to fetch (e.g. 11 for 11th place). Must be >= 1.
+     * @param endIndex   The 1-based index of the last rank to fetch (inclusive, e.g. 20 for 20th place). Must be >= startIndex.
+     * @return A list of LeaderboardEntry objects representing ranks in the specified range.
+     * @throws IllegalArgumentException If indexes are out of range.
+     * @throws SQLException             If a database access error occurs.
+     */
+    public List<LeaderboardEntry> getTopPlayersFromRange(String statistic, int startIndex, int endIndex) throws SQLException {
+        if (startIndex < 1 || endIndex < startIndex) throw new IllegalArgumentException("Invalid range: " + startIndex + "-" + endIndex + ". startIndex must be >= 1 and endIndex must be >= startIndex.");
+        int limit = endIndex - startIndex + 1;
+        int offset = startIndex - 1; // zero-based offset for SQL
+
+        return getTopPlayers(statistic, limit, offset);
     }
 }

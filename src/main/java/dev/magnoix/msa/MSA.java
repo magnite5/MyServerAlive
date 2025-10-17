@@ -2,6 +2,7 @@ package dev.magnoix.msa;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.slikey.effectlib.EffectManager;
+import dev.magnoix.msa.commands.LeaderboardCommand;
 import dev.magnoix.msa.commands.ParticleTestCommand;
 import dev.magnoix.msa.commands.StatisticCommand;
 import dev.magnoix.msa.databases.PluginDatabase;
@@ -47,6 +48,8 @@ public final class MSA extends JavaPlugin {
 
             StatisticCommand statisticCommand = new StatisticCommand(pluginDatabase.getStatisticsManager());
             LiteralCommandNode<CommandSourceStack> statisticNode = statisticCommand.create();
+            LeaderboardCommand leaderboardCommand = new LeaderboardCommand(pluginDatabase.getStatisticsManager());
+            LiteralCommandNode<CommandSourceStack> leaderboardNode = leaderboardCommand.create();
 
             commands.registrar().register(testNode);
             commands.registrar().register(particleTestNode);
