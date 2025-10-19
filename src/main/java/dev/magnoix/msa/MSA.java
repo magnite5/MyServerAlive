@@ -5,6 +5,7 @@ import de.slikey.effectlib.EffectManager;
 import dev.magnoix.msa.commands.LeaderboardCommand;
 import dev.magnoix.msa.commands.ParticleTestCommand;
 import dev.magnoix.msa.commands.StatisticCommand;
+import dev.magnoix.msa.commands.TitleCommand;
 import dev.magnoix.msa.databases.PluginDatabase;
 import dev.magnoix.msa.events.MiscEvents;
 import dev.magnoix.msa.events.PlayerEvents;
@@ -50,11 +51,14 @@ public final class MSA extends JavaPlugin {
             LiteralCommandNode<CommandSourceStack> statisticNode = statisticCommand.create();
             LeaderboardCommand leaderboardCommand = new LeaderboardCommand(pluginDatabase.getStatisticsManager());
             LiteralCommandNode<CommandSourceStack> leaderboardNode = leaderboardCommand.create();
+            TitleCommand titleCommand = new TitleCommand();
+            LiteralCommandNode<CommandSourceStack> titleNode = titleCommand.create(pluginDatabase.getTitleManager());
 
             commands.registrar().register(testNode);
             commands.registrar().register(particleTestNode);
             commands.registrar().register(statisticNode);
             commands.registrar().register(leaderboardNode);
+            commands.registrar().register(titleNode);
         });
 
     }

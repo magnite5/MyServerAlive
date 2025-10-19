@@ -15,14 +15,14 @@ public class TitleManager {
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS titles (
                     title_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name VARCHAR(50) NOT NULL,
+                    name VARCHAR(50) NOT NULL UNIQUE,
                     prefix VARCHAR(100) NOT NULL
                 );"""
             );
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS players (
                     uuid VARCHAR(36) PRIMARY KEY,
-                    active_title INTEGER,
+                    active_title INTEGER DEFAULT 1,
                     FOREIGN KEY (active_title) REFERENCES titles(title_id) ON DELETE CASCADE ON UPDATE CASCADE
                 );"""
             );
@@ -58,6 +58,12 @@ public class TitleManager {
             - (Optional) Batch Operation support
      */
 
+    public static class DuplicateTitleException extends Exception {
+        public DuplicateTitleException(String name) {
+            super("A title with the name '" + name + "' already exists.");
+        }
+    }
+
     public record title(int id, String name, String prefix) {}
 
     // --- Title Management ---
@@ -65,11 +71,11 @@ public class TitleManager {
     /**
      * Creates a new title.
      * @param name The name of the new title.
-     * @param prefix The prefix of the new title.
+     * @param prefix The MiniMessage prefix of the new title.
      * @return The newly created title record.
      * @throws SQLException If a database access error occurs.
      */
-    public title createTitle(String name, String prefix) throws SQLException {
+    public title createTitle(String name, String prefix) throws SQLException, DuplicateTitleException {
         try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO titles (name, prefix) VALUES (?, ?)", Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.setString(1, name);
             preparedStatement.setString(2, prefix);
@@ -83,19 +89,19 @@ public class TitleManager {
                     throw new SQLException("Creating title failed, no ID obtained.");
                 }
             }
-        }
+        } catch (SQLIntegrityConstraintViolationException e) { throw new DuplicateTitleException(name); }
     }
 
     /**
      * Creates a new title and establishes relations to other titles.
      * @param name The name of the new title.
-     * @param prefix The prefix of the new title.
+     * @param prefix The MiniMessage prefix of the new title.
      * @param prerequisiteIds List of title IDs that are prerequisites for this new title.
      * @param successorIds List of title IDs that this new title is a prerequisite for.
      * @return The newly created title record.
      * @throws SQLException If a database access error occurs.
      */
-    public title createTitle(String name, String prefix, List<Integer> prerequisiteIds, List<Integer> successorIds) throws SQLException {
+    public title createTitle(String name, String prefix, List<Integer> prerequisiteIds, List<Integer> successorIds) throws SQLException, DuplicateTitleException {
         title newTitle = createTitle(name, prefix);
         int newTitleId = newTitle.id();
 
@@ -131,8 +137,26 @@ public class TitleManager {
     }
 
     /**
+     * Retrieves a title record by its name. If there are multiple of the same name, it will return the first occurrence.
+     * @param name The name of the title to retrieve.
+     * @return The first matching title record, or null if not found.
+     * @throws SQLException If a database access error occurs.
+     */
+    public title getTitleFromName(String name) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT title_id, prefix FROM titles WHERE name = ?")) {
+            preparedStatement.setString(1, name);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return new title(resultSet.getInt("title_id"), name, resultSet.getString("prefix"));
+                } else {
+                return null;
+            }
+        }
+    }
+
+    /**
      * Retrieves a list of all title records.
-     * @return A list of all title records
+     * @return A list of all title records.
      * @throws SQLException If a database access error occurs.
      */
     public List<title> getAllTitles() throws SQLException {
@@ -150,6 +174,28 @@ public class TitleManager {
         return titles;
     }
 
+    public boolean getTitleExists(String name) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT name FROM titles WHERE name = ?")) {
+            preparedStatement.setString(1, name);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            return resultSet.next();
+        }
+    }
+
+    /**
+     * Retrieves a list of all title names.
+     * @return A list of all title names.
+     * @throws SQLException If a database access error occurs.
+     */
+    public List<String> getAllTitleNames() throws SQLException {
+        List<String> names = new ArrayList<>();
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT name FROM titles")) {
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) names.add(resultSet.getString("name"));
+        }
+        return names;
+    }
+
     /**
      * Deletes a title.
      * @param titleId The id of the title to delete.
@@ -161,6 +207,16 @@ public class TitleManager {
             preparedStatement.setInt(1, titleId);
             int affectedRows = preparedStatement.executeUpdate();
             return affectedRows > 0;
+        }
+    }
+
+    public title modifyTitle(int titleId, String name, String prefix) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE titles SET name = ?, prefix = ? WHERE title_id = ?")) {
+            preparedStatement.setString(1, name);
+            preparedStatement.setString(2, prefix);
+            preparedStatement.setInt(3, titleId);
+            preparedStatement.executeUpdate();
+            return getTitle(titleId);
         }
     }
 
@@ -241,6 +297,21 @@ public class TitleManager {
     }
 
     /**
+     * Counts the number of titles a player has.
+     * @param uuid The UUID of the player.
+     * @return The number of titles
+     * @throws SQLException If a database access error occurs
+     */
+    public int getTitleCount(UUID uuid) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) FROM player_titles WHERE uuid = ?")) {
+            preparedStatement.setString(1, uuid.toString());
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) return resultSet.getInt(1);
+            return 0;
+        }
+    }
+
+    /**
      * Checks if a player has a specific title.
      * @param uuid The UUID of the player.
      * @param titleId The ID of the title to check for.
@@ -270,6 +341,7 @@ public class TitleManager {
             preparedStatement.setString(2, uuid.toString());
             preparedStatement.executeUpdate();
         }
+        if (!hasTitle(uuid, titleId)) giveTitle(uuid, titleId);
     }
 
     /**
