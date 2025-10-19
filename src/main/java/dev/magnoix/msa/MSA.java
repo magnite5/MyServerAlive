@@ -54,6 +54,7 @@ public final class MSA extends JavaPlugin {
             commands.registrar().register(testNode);
             commands.registrar().register(particleTestNode);
             commands.registrar().register(statisticNode);
+            commands.registrar().register(leaderboardNode);
         });
 
     }

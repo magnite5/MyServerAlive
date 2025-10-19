@@ -32,4 +32,17 @@ public class TextUtils {
     public static List<Component> stringToLore(String text, int maxLineLength) {
         return stringToLore(text, maxLineLength, null);
     }
+    public static String capitalizeFirst(String text) {
+        if (text == null || text.isEmpty()) return text;
+        return text.substring(0, 1).toUpperCase() + text.substring(1);
+    }
+    public static String capitalizeEachWord(String text) {
+        if (text == null || text.isEmpty()) return text;
+        String[] words = text.split("\\s+");
+        StringBuilder stringBuilder = new StringBuilder();
+        for (String word : words) {
+            stringBuilder.append(capitalizeFirst(word)).append(" ");
+        }
+        return stringBuilder.toString().trim();
+    }
 }

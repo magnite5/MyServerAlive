@@ -156,6 +156,17 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
         setStatistic(uuid, statistic, (int) (getStatistic(uuid, statistic) * multiplier));
     }
 
+    public int getStatisticCount(String statistic) throws SQLException {
+        if (!VALID_COLUMNS.contains(statistic.trim().toLowerCase())) throw new IllegalArgumentException("Invalid Statistic: " + statistic);
+
+        String sql = "SELECT COUNT(*) AS total FROM statistics WHERE " + statistic + " > 0";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) return resultSet.getInt("total");
+        }
+        return 0;
+    }
+
     // Kills Methods
     public int getKills(UUID uuid) throws SQLException {
         return getStatistic(uuid, "kills");
@@ -212,7 +223,7 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
         multiplyStatistic(uuid, "networth", multiplier);
     }
 
-    public record LeaderboardEntry(UUID player, double value) {} //TODO: Add support for leaderboard position
+    public record LeaderboardEntry(UUID player, double value, int position) {} //TODO: Add support for leaderboard position
 
     /**
      * Gets the top players for a given statistic.
@@ -229,10 +240,12 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
             preparedStatement.setInt(1, limit);
 
             ResultSet resultSet = preparedStatement.executeQuery();
+            int position = 1;
             while (resultSet.next()) {
                 UUID uuid = UUID.fromString(resultSet.getString("uuid"));
                 double value = resultSet.getInt(statistic);
-                leaderboard.add(new LeaderboardEntry(uuid, value));
+                leaderboard.add(new LeaderboardEntry(uuid, value, position));
+                position++;
             }
         }
         return leaderboard;
@@ -251,17 +264,19 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
      */
     public List<LeaderboardEntry> getTopPlayers(String statistic, int limit, int offset) throws SQLException {
         if (!VALID_COLUMNS.contains(statistic.trim().toLowerCase())) throw new IllegalArgumentException("Invalid Statistic: " + statistic);
-        if (limit < 1 || offset < 0) throw new IllegalArgumentException("Invalid limit or offset: " + limit + "-" + offset + ". limit must be >= 1 and offset must be >= 0.");
+        if (limit < 1 || offset < 0) throw new IllegalArgumentException("Invalid limit or offset: " + limit + " - " + offset + ". limit must be >= 1 and offset must be >= 0.");
 
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid, " + statistic + " FROM statistics ORDER BY " + statistic + " DESC LIMIT ? OFFSET ?")) {
             preparedStatement.setInt(1, limit);
             preparedStatement.setInt(2, offset);
             ResultSet resultSet = preparedStatement.executeQuery();
             List<LeaderboardEntry> leaderboard = new ArrayList<>();
+            int position = offset + 1;
             while (resultSet.next()) {
                 UUID uuid = UUID.fromString(resultSet.getString("uuid"));
                 double value = resultSet.getInt(statistic);
-                leaderboard.add(new LeaderboardEntry(uuid, value));
+                leaderboard.add(new LeaderboardEntry(uuid, value, position));
+                position++;
             }
             return leaderboard;
         }
