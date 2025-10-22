@@ -21,6 +21,8 @@ public class TitleMenu { //todo: Un-italicise everything
     private static final int TITLE_START_SLOT = 9;
     private TitleManager titleManager;
 
+    private MiniMessage mm = MiniMessage.miniMessage();
+
     public TitleMenu(TitleManager titleManager) {
         this.titleManager = titleManager;
     }
@@ -48,12 +50,13 @@ public class TitleMenu { //todo: Un-italicise everything
         int pageEnd = Math.min(pageStart + PAGE_SIZE, titles.size());
         List<TitleManager.title> pageTitles = titles.subList(pageStart, pageEnd);
 
-        Menu menu = new Menu(MENU_SIZE, Component.text("Your Titles - Page " + (activePage + 1) + "/" + (maxPage + 1)).color(NamedTextColor.GOLD));
+        Menu menu = new Menu(MENU_SIZE, Component.text("Titles - Page " + (activePage + 1) + "/" + (maxPage + 1)).color(NamedTextColor.DARK_AQUA));
+        menu.setBackground(backgroundItem());
 
         for (int i = 0; i < TITLE_START_SLOT; i++) {
             menu.setItem(i, headerItem());
         }
-        menu.setItem(4, infoButton(activeTitle, titleCount));
+        menu.setItem(4, infoButton(activeTitle, titleCount, uuid));
         for (int i = 0; i < pageTitles.size(); i++) {
             TitleManager.title title = pageTitles.get(i);
             Boolean isActive = (title.id() == activeTitleId);
@@ -97,37 +100,36 @@ public class TitleMenu { //todo: Un-italicise everything
     private ItemStack getTitleItem(TitleManager.title title, boolean isActive) {
         return ItemCreator.create(
             Material.NAME_TAG,
-            isActive ? Component.text(title.name()).color(NamedTextColor.GREEN) : Component.text(title.name()),
+            isActive
+                ? Component.text(title.name()).color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false)
+                : Component.text(title.name()).decoration(TextDecoration.ITALIC, false),
             List.of(
-                MiniMessage.miniMessage().deserialize(title.prefix()),
-                Component.text(" "),
-                isActive ?
-                    Component.text("Currently Equipped. Click to Unequip")
-                        .color(NamedTextColor.RED)
-                        .decorate(TextDecoration.UNDERLINED) :
-                    Component.text("Click to Equip")
-                        .color(NamedTextColor.YELLOW)
-                        .decorate(TextDecoration.UNDERLINED),
-                Component.text("ID: " + title.id()).color(NamedTextColor.GRAY).decorate(TextDecoration.ITALIC)
+                mm.deserialize("<!i>" + title.prefix()),
+                Component.text(""),
+                (isActive)
+                    ? mm.deserialize("<u><!i><red>Click</u> <!i><red>to Unequip")
+                    : mm.deserialize("<u><!i><yellow>Click</u> <!i><yellow>to Equip"),
+                mm.deserialize("<dark_gray><i>ID: " + title.id())
             ),
             isActive
         );
     }
-
-    private ItemStack headerItem() { return ItemCreator.create(Material.LIGHT_BLUE_STAINED_GLASS_PANE, Component.text(" ")); }
-    private ItemStack fillerItem() { return ItemCreator.create(Material.GRAY_STAINED_GLASS_PANE, Component.text(" ")); }
-    private ItemStack infoButton(TitleManager.title activeTitle, int titleCount) {
+    private ItemStack backgroundItem() { return ItemCreator.create(Material.GRAY_STAINED_GLASS_PANE, Component.text(" ").decoration(TextDecoration.ITALIC, false)); }
+    private ItemStack headerItem() { return ItemCreator.create(Material.BLUE_STAINED_GLASS_PANE, Component.text(" ").decoration(TextDecoration.ITALIC, false)); }
+    private ItemStack fillerItem() { return ItemCreator.create(Material.BLUE_STAINED_GLASS_PANE, Component.text(" ").decoration(TextDecoration.ITALIC, false)); }
+    private ItemStack infoButton(TitleManager.title activeTitle, int titleCount, UUID uuid) {
         return ItemCreator.skull(
-            UUID.fromString("556e1ac9-edcb-4487-b77a-a8d87d9f7e1b"),
-            Component.text("Title Info").color(NamedTextColor.GOLD),
+            uuid,
+            mm.deserialize("<!i><gold>Title Info"),
             List.of(
-                Component.text("Current Title: ").color(NamedTextColor.DARK_AQUA),
-                Component.text(activeTitle.name()),
+                mm.deserialize("<!i><dark_aqua>Current Title: "),
+                mm.deserialize("<!i><dark_aqua> » <gold>" + activeTitle.name()),
                 Component.text(""),
-                Component.text("Title Count: " + titleCount)
+                mm.deserialize("<!i><dark_aqua>You have <aqua>" + titleCount + " <dark_aqua>title" + (titleCount == 1 ? "." : "s."))
+
             ));
     }
-    private ItemStack backButton()  { return ItemCreator.create(Material.ARROW, Component.text("Previous Page").color(NamedTextColor.YELLOW)); }
-    private ItemStack nextButton()  { return ItemCreator.create(Material.ARROW, Component.text("Next Page").color(NamedTextColor.GREEN)); }
-    private ItemStack closeButton() { return ItemCreator.create(Material.BARRIER, Component.text("Close").color(NamedTextColor.RED)); }
+    private ItemStack backButton()  { return ItemCreator.create(Material.ARROW, Component.text("Previous Page").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)); }
+    private ItemStack nextButton()  { return ItemCreator.create(Material.ARROW, Component.text("Next Page").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false)); }
+    private ItemStack closeButton() { return ItemCreator.create(Material.BARRIER, Component.text("Close").color(NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)); }
 }

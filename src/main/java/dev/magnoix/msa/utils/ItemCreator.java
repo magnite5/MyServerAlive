@@ -1,5 +1,6 @@
 package dev.magnoix.msa.utils;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -103,9 +104,17 @@ public class ItemCreator {
         ItemStack item = create(Material.PLAYER_HEAD, name, lore);
         SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
         if (skullMeta == null) return item;
-        skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(uuid));
-        item.setItemMeta(skullMeta);
-        return item;
+        try {
+            PlayerProfile profile = Bukkit.createProfile(uuid);
+            profile.complete();
+            skullMeta.setPlayerProfile(profile);
+            item.setItemMeta(skullMeta);
+            return item;
+        } catch (Exception e) {
+            skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(uuid));
+            item.setItemMeta(skullMeta);
+            return item;
+        }
     }
 
 }

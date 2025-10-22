@@ -2,6 +2,7 @@ package dev.magnoix.msa.commands;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.TitleManager;
@@ -14,6 +15,7 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -37,6 +39,15 @@ public class TitleCommand {
             .filter(name -> name.toLowerCase().contains(partial))
             .forEach(builder::suggest);
         return builder.buildFuture();
+    }
+
+    public static SuggestionProvider<CommandSourceStack> onlinePlayerSuggestions() {
+        return (CommandContext<CommandSourceStack> context,SuggestionsBuilder builder) -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                builder.suggest(player.getName());
+            }
+            return CompletableFuture.completedFuture(builder.build());
+        };
     }
 
     public LiteralCommandNode<CommandSourceStack> create(TitleManager titleManager) {
@@ -91,7 +102,8 @@ public class TitleCommand {
                     })))
             .then(Commands.literal("player")
                 .then(Commands.argument("target", StringArgumentType.word())
-                    .then(Commands.literal("setActive")
+                    .suggests(onlinePlayerSuggestions())
+                    .then(Commands.literal("active")
                         .then(Commands.argument("name", StringArgumentType.string())
                             .executes(ctx -> {
                                 CommandSender sender = ctx.getSource().getSender();
@@ -115,6 +127,56 @@ public class TitleCommand {
                                     Msg.miniMsg("<red>An error occurred while retrieving the title: <yellow>" + e.getMessage(), sender);
                                     return 0;
                                 }
+                            })))
+                    .then(Commands.literal("give")
+                        .then(Commands.argument("name", StringArgumentType.string())
+                            .suggests(this::suggestTitleNames)
+                            .executes(ctx -> {
+                                CommandSender sender = ctx.getSource().getSender();
+                                OfflinePlayer target = resolveTarget(ctx);
+                                if (!isTargetValid(target)) {
+                                    sender.sendMessage("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class));
+                                    return 1;
+                                }
+                                String name = ctx.getArgument("name", String.class);
+                                try {
+                                    TitleManager.title title = titleManager.getTitleFromName(name);
+                                    if (title != null) {
+                                        titleManager.giveTitle(target.getUniqueId(), title.id());
+                                        Msg.miniMsg("<dark_aqua>Successfully gave the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title to <gold>" + target.getName() + "<dark_aqua>, with an ID of <i><dark_gray>" + title.id() + "</i>", sender);
+                                    } else {
+                                        Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\"<yellow>exists.", sender);
+                                    }
+                                    return 1;
+                                } catch (SQLException e) {
+                                    Msg.miniMsg("<red>An error occurred while giving the title: <yellow>" + e.getMessage(),sender);
+                                    return 0;
+                                }
+                            })))
+                    .then(Commands.literal("revoke")
+                        .then(Commands.argument("name", StringArgumentType.string())
+                            .suggests(this::suggestTitleNames)
+                            .executes(ctx -> {
+                                CommandSender sender = ctx.getSource().getSender();
+                                OfflinePlayer target = resolveTarget(ctx);
+                                if (!isTargetValid(target)) {
+                                    sender.sendMessage("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class));
+                                    return 1;
+                                }
+                                String name = ctx.getArgument("name", String.class);
+                                try {
+                                    TitleManager.title title = titleManager.getTitleFromName(name);
+                                    if (title != null) {
+                                        titleManager.revokeTitle(target.getUniqueId(), title.id());
+                                        Msg.miniMsg("<dark_aqua>Successfully revoked the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title from <gold>" + target.getName() + "<dark_aqua>, with an ID of <i><dark_gray>" + title.id() + "</i>",sender);
+                                    } else {
+                                        Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\"<yellow>exists.", sender);
+                                    }
+                                    return 1;
+                                } catch (SQLException e) {
+                                    Msg.miniMsg("<red>An error occurred while revoking the title: <yellow>" + e.getMessage(), sender);
+                                    return 0;
+                                }
                             }))))).build();
     }
 
@@ -129,5 +191,4 @@ public class TitleCommand {
         if (onlinePlayer != null) return onlinePlayer;
         return Bukkit.getOfflinePlayer(name);
     }
-
 }
