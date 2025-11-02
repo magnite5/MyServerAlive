@@ -1,5 +1,15 @@
 package dev.magnoix.msa.databases;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.luckperms.api.LuckPerms;
+import net.luckperms.api.LuckPermsProvider;
+import net.luckperms.api.model.user.User;
+import net.luckperms.api.node.types.PrefixNode;
+import org.bukkit.Bukkit;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.plugin.java.JavaPlugin;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,9 +18,12 @@ import java.util.UUID;
 public class TitleManager {
 
     private final Connection connection;
+    private final LuckPerms luckPerms;
+    private final MiniMessage mm = MiniMessage.miniMessage();
 
     public TitleManager(Connection connection) throws SQLException {
         this.connection = connection;
+        this.luckPerms = LuckPermsProvider.get();
         try (Statement statement = connection.createStatement()) {
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS titles (
@@ -48,11 +61,66 @@ public class TitleManager {
         }
     }
 
+    private void updateLuckPermsPrefix(UUID uuid, String prefix) {
+        User user =  luckPerms.getUserManager().getUser(uuid);
+        if (user == null) {
+            luckPerms.getUserManager().loadUser(uuid).thenAcceptAsync(thisUser -> {
+                updateLuckPermsPrefix(thisUser, prefix);
+                luckPerms.getUserManager().saveUser(thisUser);
+            });
+            return;
+        }
+        updateLuckPermsPrefix(user, prefix);
+        luckPerms.getUserManager().saveUser(user);
+    }
+    private void updateLuckPermsPrefix(UUID uuid, title title) {
+        updateLuckPermsPrefix(uuid, title.prefix);
+    }
+    private void updateLuckPermsPrefix(User user, String prefix) {
+        String legacyPrefix = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(mm.deserialize(prefix));
+        user.data().clear(node -> node instanceof PrefixNode);
+        PrefixNode prefixNode = PrefixNode.builder(legacyPrefix, 10).build();
+        user.data().add(prefixNode);
+    }
+    private void updateLuckPermsPrefix(User user, Component prefix) {
+        String legacyPrefix = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(prefix);
+        user.data().clear(node -> node instanceof PrefixNode);
+        PrefixNode prefixNode = PrefixNode.builder(legacyPrefix, 10).build();
+        user.data().add(prefixNode);
+    }
+
+    public void syncLuckPermsPrefix(UUID uuid) throws SQLException {
+        title activeTitle = getActiveTitle(uuid);
+        String activePrefix = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(mm.deserialize(activeTitle.prefix));
+
+        User user = luckPerms.getUserManager().getUser(uuid);
+        if (user == null) user = luckPerms.getUserManager().loadUser(uuid).join();
+
+        String currentPrefix = user.getCachedData().getMetaData().getPrefix();
+        if (!activePrefix.equals(currentPrefix)) {
+            user.data().clear(node -> node instanceof PrefixNode);
+            PrefixNode prefixNode = PrefixNode.builder(activePrefix, 10).build();
+            user.data().add(prefixNode);
+            luckPerms.getUserManager().saveUser(user);
+        }
+    }
+
+    public void handlePlayerJoin(PlayerJoinEvent event, JavaPlugin plugin) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                title active = getActiveTitle(uuid);
+                if (active != null) updateLuckPermsPrefix(uuid, active);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     /*
     TODO:
         - Create methods to:
             - Get relation count / depth
-            - Modify a title
             - Get players who have a title
             - (Optional) Give / revoke all titles to / from a player
             - (Optional) Batch Operation support
@@ -210,6 +278,14 @@ public class TitleManager {
         }
     }
 
+    /**
+     * Modifies an existing title by updating name and prefix
+     * @param titleId The ID of the title to modify.
+     * @param name The new name of the title.
+     * @param prefix The new prefix of the title.
+     * @return The new title.
+     * @throws SQLException If a database access error occurs.
+     */
     public title modifyTitle(int titleId, String name, String prefix) throws SQLException {
         try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE titles SET name = ?, prefix = ? WHERE title_id = ?")) {
             preparedStatement.setString(1, name);
@@ -218,6 +294,18 @@ public class TitleManager {
             preparedStatement.executeUpdate();
             return getTitle(titleId);
         }
+    }
+
+    public title setTitleName(int titleId, String name) throws SQLException {
+        title title = getTitle(titleId);
+        if (title == null) throw new SQLException("Title with ID " + titleId + " does not exist.");
+        return modifyTitle(titleId, name, title.prefix);
+    }
+
+    public title setTitlePrefix(int titleId, String prefix) throws SQLException {
+        title title = getTitle(titleId);
+        if (title == null) { throw new SQLException("Title with ID " + titleId + " does not exist."); }
+        return modifyTitle(titleId, title.name, prefix);
     }
 
     // --- Player Title Management ---

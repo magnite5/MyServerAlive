@@ -41,7 +41,7 @@ public final class MSA extends JavaPlugin {
 
         effectManager = new EffectManager(this);
         getServer().getPluginManager().registerEvents(new MiscEvents(), this);
-        getServer().getPluginManager().registerEvents(new PlayerEvents(pluginDatabase.getStatisticsManager()), this);
+        getServer().getPluginManager().registerEvents(new PlayerEvents(pluginDatabase.getStatisticsManager(), pluginDatabase.getTitleManager(), getPlugin(MSA.class)), this);
 
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             LiteralCommandNode<CommandSourceStack> testNode = dev.magnoix.msa.commands.TestCommand.create();

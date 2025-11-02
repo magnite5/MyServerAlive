@@ -72,7 +72,7 @@ public class TitleCommand {
                             String prefix = ctx.getArgument("prefix", String.class);
                             try {
                                 TitleManager.title newTitle = titleManager.createTitle(name, prefix);
-                                Msg.miniMsg("<dark_aqua>Successfully created the new <gold>\"<yellow>" + newTitle.name() + "<gold>\" <dark_aqua>title with an ID of <i><dark_gray>" + newTitle.id() + "</i>", sender);
+                                Msg.miniMsg("<dark_aqua>Created the new <gold>\"<yellow>" + newTitle.name() + "<gold>\" <dark_aqua>title ID <i><dark_gray>" + newTitle.id() + "</i>", sender);
                                 return 1;
                             } catch (TitleManager.DuplicateTitleException e) {
                                 Msg.miniMsg("<red>A title with the name <gold>\"<yellow>" + name + "<gold>\" <red> already exists.", sender);
@@ -92,8 +92,62 @@ public class TitleCommand {
                             TitleManager.title title = titleManager.getTitleFromName(name);
                             if (title != null) {
                                 titleManager.deleteTitle(title.id());
-                                Msg.miniMsg("<dark_aqua>Successfully deleted the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title, with an ID of <i><dark_gray>" + title.id() + "</i>", sender);
+                                Msg.miniMsg("<dark_aqua>Deleted the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title, ID <i><dark_gray>" + title.id() + "</i>", sender);
                             } else Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\" <yellow>exists.", sender);
+                            return 1;
+                        } catch (Exception e) {
+                            Msg.miniMsg("<red>An error occurred while retrieving the title: <yellow>" + e.getMessage(), sender);
+                            return 0;
+                        }
+                    })))
+            .then(Commands.literal("edit")
+                .then(Commands.argument("name", StringArgumentType.string())
+                    .suggests(this::suggestTitleNames)
+                    .then(Commands.literal("prefix")
+                        .then(Commands.argument("newPrefix", StringArgumentType.greedyString())
+                            .executes(ctx -> {
+                                CommandSender sender =  ctx.getSource().getSender();
+                                String name =  ctx.getArgument("name", String.class);
+                                String newPrefix =  ctx.getArgument("newPrefix", String.class);
+                                try {
+                                    TitleManager.title title = titleManager.getTitleFromName(name);
+                                    TitleManager.title newTitle = titleManager.setTitlePrefix(title.id(), newPrefix);
+                                    Msg.miniMsg("<dark_aqua>Updated the <gold>\"<yellow>" + newTitle.name() + "<gold>\" <dark_aqua>title's prefix.", sender);
+                                    Msg.miniMsg("<dark_aqua>Old Prefix: <gold>\"" + title.prefix() + "<gold>\"<dark_aqua>. New Prefix: <gold>\"" + newTitle.prefix() + "<gold>\"<dark_aqua>.", sender);
+                                    return 1;
+                                } catch (Exception e) {
+                                    Msg.miniMsg("<red>An error occurred while retrieving the title: <yellow>" + e.getMessage(), sender);
+                                    return 0;
+                                }
+                            })))
+                    .then(Commands.literal("name")
+                        .then(Commands.argument("newName", StringArgumentType.string())
+                            .executes(ctx -> {
+                                CommandSender sender = ctx.getSource().getSender();
+                                String name = ctx.getArgument("name", String.class);
+                                String newName = ctx.getArgument(("newName"), String.class);
+                                try {
+                                    TitleManager.title title = titleManager.getTitleFromName(name);
+                                    TitleManager.title newTitle = titleManager.setTitleName(title.id(), newName);
+                                    Msg.miniMsg("<dark_aqua>Changed the <gold>\"<yellow>" + title.name() + "<gold>\" <dark_aqua>title's name to <gold>\"<yellow>" + newTitle.name() + "<gold>\"<dark_aqua>.", sender);
+                                    return 1;
+                                } catch (Exception e) {
+                                    Msg.miniMsg("<red>An error occurred while retrieving the title: <yellow>" + e.getMessage(), sender);
+                                    return 0;
+                                }
+                            })))))
+            .then(Commands.literal("sync")
+                .then(Commands.argument("target", StringArgumentType.word())
+                    .suggests(onlinePlayerSuggestions())
+                    .executes(ctx -> {
+                        CommandSender sender = ctx.getSource().getSender();
+                        OfflinePlayer target = resolveTarget(ctx);
+                        if (!isTargetValid(target)) {
+                            sender.sendMessage("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class));
+                            return 0;
+                        } try {
+                            titleManager.syncLuckPermsPrefix(target.getUniqueId());
+                            Msg.miniMsg("<dark_aqua>Synced <gold>" + target.getName() + "<dark_aqua>'s <yellow>LuckPerms Prefix <dark_aqua>with their <yellow>Active Title.", sender);
                             return 1;
                         } catch (Exception e) {
                             Msg.miniMsg("<red>An error occurred while retrieving the title: <yellow>" + e.getMessage(), sender);
@@ -118,7 +172,7 @@ public class TitleCommand {
                                     TitleManager.title title = titleManager.getTitleFromName(name);
                                     if (title != null) {
                                         titleManager.setActiveTitle(target.getUniqueId(), title.id());
-                                        Msg.miniMsg("<dark_aqua>Successfully set <gold>" + target.getName() + "<dark_aqua>'s active title to <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>with an ID of <i><dark_gray>" + title.id() + "</i>", sender);
+                                        Msg.miniMsg("<dark_aqua>Successfully set <gold>" + target.getName() + "<dark_aqua>'s active title to <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>ID <i><dark_gray>" + title.id() + "</i>", sender);
                                     } else {
                                         Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\"<yellow>exists.", sender);
                                     }
@@ -136,14 +190,14 @@ public class TitleCommand {
                                 OfflinePlayer target = resolveTarget(ctx);
                                 if (!isTargetValid(target)) {
                                     sender.sendMessage("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class));
-                                    return 1;
+                                    return 0;
                                 }
                                 String name = ctx.getArgument("name", String.class);
                                 try {
                                     TitleManager.title title = titleManager.getTitleFromName(name);
                                     if (title != null) {
                                         titleManager.giveTitle(target.getUniqueId(), title.id());
-                                        Msg.miniMsg("<dark_aqua>Successfully gave the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title to <gold>" + target.getName() + "<dark_aqua>, with an ID of <i><dark_gray>" + title.id() + "</i>", sender);
+                                        Msg.miniMsg("<dark_aqua>Gave the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title to <gold>" + target.getName() + "<dark_aqua>, ID <i><dark_gray>" + title.id() + "</i>", sender);
                                     } else {
                                         Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\"<yellow>exists.", sender);
                                     }
@@ -161,14 +215,14 @@ public class TitleCommand {
                                 OfflinePlayer target = resolveTarget(ctx);
                                 if (!isTargetValid(target)) {
                                     sender.sendMessage("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class));
-                                    return 1;
+                                    return 0;
                                 }
                                 String name = ctx.getArgument("name", String.class);
                                 try {
                                     TitleManager.title title = titleManager.getTitleFromName(name);
                                     if (title != null) {
                                         titleManager.revokeTitle(target.getUniqueId(), title.id());
-                                        Msg.miniMsg("<dark_aqua>Successfully revoked the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title from <gold>" + target.getName() + "<dark_aqua>, with an ID of <i><dark_gray>" + title.id() + "</i>",sender);
+                                        Msg.miniMsg("<dark_aqua>Revoked the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title from <gold>" + target.getName() + "<dark_aqua>, ID <i><dark_gray>" + title.id() + "</i>",sender);
                                     } else {
                                         Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\"<yellow>exists.", sender);
                                     }
