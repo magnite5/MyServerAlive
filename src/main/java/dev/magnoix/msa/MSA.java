@@ -37,7 +37,7 @@ public final class MSA extends JavaPlugin {
         }
 
         this.scheduler = getServer().getScheduler();
-        Msg.init(this.getLogger());
+        Msg.init(this);
 
         effectManager = new EffectManager(this);
         getServer().getPluginManager().registerEvents(new MiscEvents(), this);

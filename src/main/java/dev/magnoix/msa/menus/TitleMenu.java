@@ -14,6 +14,7 @@ import org.bukkit.inventory.ItemStack;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Level;
 
 public class TitleMenu { //todo: Un-italicise everything
     private static final int MENU_SIZE = 45; // 5 rows
@@ -65,14 +66,14 @@ public class TitleMenu { //todo: Un-italicise everything
                     if (isActive) {
                         TitleManager.title defaultTitle = titleManager.getTitleFromName("default");
                         if (defaultTitle != null) {
-                            titleManager.setActiveTitle(p.getUniqueId(), defaultTitle.id());
+                            titleManager.setActivePrefix(p.getUniqueId(), defaultTitle.id());
                             Msg.miniMsg("<green>Your title has been unequipped.", p);
                         } else {
-                            titleManager.setActiveTitle(p.getUniqueId(), -1);
+                            titleManager.setActivePrefix(p.getUniqueId(), -1);
                             Msg.miniMsg("<yellow>No default title found; no title is equipped. <u>Please notify an admin of this issue.", p);
                         }
                     } else {
-                        titleManager.setActiveTitle(p.getUniqueId(), title.id());
+                        titleManager.setActivePrefix(p.getUniqueId(), title.id());
                         Msg.miniMsg("<dark_aqua>Equipped Title: <gold>" + title.name(), p);
                     }
                     menu.Close(p);
@@ -98,21 +99,26 @@ public class TitleMenu { //todo: Un-italicise everything
     }
 
     private ItemStack getTitleItem(TitleManager.title title, boolean isActive) {
-        return ItemCreator.create(
-            Material.NAME_TAG,
-            isActive
-                ? Component.text(title.name()).color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false)
-                : Component.text(title.name()).decoration(TextDecoration.ITALIC, false),
-            List.of(
-                mm.deserialize("<!i>" + title.prefix()),
-                Component.text(""),
-                (isActive)
-                    ? mm.deserialize("<u><!i><red>Click</u> <!i><red>to Unequip")
-                    : mm.deserialize("<u><!i><yellow>Click</u> <!i><yellow>to Equip"),
-                mm.deserialize("<dark_gray><i>ID: " + title.id())
-            ),
-            isActive
-        );
+        try {
+            return ItemCreator.create(
+                Material.NAME_TAG,
+                isActive
+                    ? Component.text(title.name()).color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false)
+                    : Component.text(title.name()).decoration(TextDecoration.ITALIC, false),
+                List.of(
+                    mm.deserialize("<!i><gray>").append(titleManager.getFormattedPrefix(title)),
+                    Component.text(""),
+                    (isActive)
+                        ? mm.deserialize("<u><!i><red>Click</u> <!i><red>to Unequip")
+                        : mm.deserialize("<u><!i><yellow>Click</u> <!i><yellow>to Equip"),
+                    mm.deserialize("<dark_gray><i>ID: " + title.id())
+                ),
+                isActive
+            );
+        } catch (SQLException e) {
+            Msg.log(Level.SEVERE, "An error occurred while accessing the database to build a title item.");
+            return ItemCreator.errorItem();
+        }
     }
     private ItemStack backgroundItem() { return ItemCreator.create(Material.GRAY_STAINED_GLASS_PANE, Component.text(" ").decoration(TextDecoration.ITALIC, false)); }
     private ItemStack headerItem() { return ItemCreator.create(Material.BLUE_STAINED_GLASS_PANE, Component.text(" ").decoration(TextDecoration.ITALIC, false)); }

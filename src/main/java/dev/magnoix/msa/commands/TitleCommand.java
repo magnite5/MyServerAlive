@@ -73,6 +73,7 @@ public class TitleCommand {
                             try {
                                 TitleManager.title newTitle = titleManager.createTitle(name, prefix);
                                 Msg.miniMsg("<dark_aqua>Created the new <gold>\"<yellow>" + newTitle.name() + "<gold>\" <dark_aqua>title ID <i><dark_gray>" + newTitle.id() + "</i>", sender);
+                                if (name.charAt(name.length() - 1) != ' ') Msg.miniMsg("<yellow>Warning: There is no space at the end of the prefix; <i>The prefix will be stuck to the player's name in practice.</i>", sender);
                                 return 1;
                             } catch (TitleManager.DuplicateTitleException e) {
                                 Msg.miniMsg("<red>A title with the name <gold>\"<yellow>" + name + "<gold>\" <red> already exists.", sender);
@@ -159,6 +160,7 @@ public class TitleCommand {
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.literal("active")
                         .then(Commands.argument("name", StringArgumentType.string())
+                            .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
                                 CommandSender sender = ctx.getSource().getSender();
                                 OfflinePlayer target = resolveTarget(ctx);
@@ -171,7 +173,7 @@ public class TitleCommand {
                                 try {
                                     TitleManager.title title = titleManager.getTitleFromName(name);
                                     if (title != null) {
-                                        titleManager.setActiveTitle(target.getUniqueId(), title.id());
+                                        titleManager.setActivePrefix(target.getUniqueId(), title.id());
                                         Msg.miniMsg("<dark_aqua>Successfully set <gold>" + target.getName() + "<dark_aqua>'s active title to <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>ID <i><dark_gray>" + title.id() + "</i>", sender);
                                     } else {
                                         Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\"<yellow>exists.", sender);

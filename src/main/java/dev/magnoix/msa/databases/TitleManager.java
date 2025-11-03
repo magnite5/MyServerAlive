@@ -1,5 +1,7 @@
 package dev.magnoix.msa.databases;
 
+import dev.magnoix.msa.messages.Msg;
+import dev.magnoix.msa.utils.TextUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.luckperms.api.LuckPerms;
@@ -14,6 +16,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Level;
 
 public class TitleManager {
 
@@ -58,6 +61,7 @@ public class TitleManager {
                     FOREIGN KEY (title_id) REFERENCES titles(title_id) ON DELETE CASCADE ON UPDATE CASCADE
                 );"""
             );
+            confirmDefaultTitle();
         }
     }
 
@@ -110,6 +114,7 @@ public class TitleManager {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
                 title active = getActiveTitle(uuid);
+                if (active == null) setActivePrefix(uuid, 1);
                 if (active != null) updateLuckPermsPrefix(uuid, active);
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -135,6 +140,20 @@ public class TitleManager {
     public record title(int id, String name, String prefix) {}
 
     // --- Title Management ---
+
+    public void confirmDefaultTitle() {
+        try {
+            title title = getTitleFromName("default");
+            if (title == null) {
+                title newDefault = createTitle("default", "default ");
+                Msg.log(Level.WARNING, "Created a new default title with ID " + newDefault.id());
+            } else {
+                Msg.log("A default title exists with the ID " + title.id);
+            }
+        } catch (Exception e) {
+            Msg.log(Level.SEVERE, "An error occurred while confirming the default title: " + e.getMessage());
+        }
+    }
 
     /**
      * Creates a new title.
@@ -202,6 +221,13 @@ public class TitleManager {
                 return null;
             }
         }
+    }
+    public Component getFormattedPrefix(title title) throws SQLException {
+        return TextUtils.parseMixedFormatting(title.prefix);
+    }
+    public Component getFormattedPrefix(int titleId) throws SQLException {
+        title title = getTitle(titleId);
+        return TextUtils.parseMixedFormatting(title.prefix);
     }
 
     /**
@@ -328,7 +354,7 @@ public class TitleManager {
             preparedStatement.executeUpdate();
         }
         if (setAsActive) {
-            setActiveTitle(uuid, titleId);
+            setActivePrefix(uuid, titleId);
         }
     }
 
@@ -430,6 +456,11 @@ public class TitleManager {
             preparedStatement.executeUpdate();
         }
         if (!hasTitle(uuid, titleId)) giveTitle(uuid, titleId);
+    }
+
+    public void setActivePrefix(UUID uuid, int titleId) throws SQLException {
+        setActiveTitle(uuid, titleId);
+        syncLuckPermsPrefix(uuid);
     }
 
     /**

@@ -2,6 +2,7 @@ package dev.magnoix.msa.utils;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -115,6 +116,10 @@ public class ItemCreator {
             item.setItemMeta(skullMeta);
             return item;
         }
+    }
+
+    public static ItemStack errorItem() {
+        return create(Material.BARRIER, MiniMessage.miniMessage().deserialize("<red>!! ERROR !!"));
     }
 
 }
