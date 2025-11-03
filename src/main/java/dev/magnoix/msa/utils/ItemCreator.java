@@ -1,6 +1,8 @@
 package dev.magnoix.msa.utils;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -81,19 +83,17 @@ public class ItemCreator {
         return item;
     }
     public static ItemStack tool(Material material, Component name, List<Component> lore, boolean unbreakable, Map<Enchantment, Integer> enchants, List<ItemFlag> flags, Integer customModelData) {
-        ItemStack item = create(material, name, lore);
+        ItemStack item = tool(material, name, lore, unbreakable, enchants, flags);
         ItemMeta itemMeta = item.getItemMeta();
         if (itemMeta == null || customModelData == null) return item;
-        if (flags != null && !flags.isEmpty()) itemMeta.addItemFlags(flags.toArray(new ItemFlag[0]));
         itemMeta.setCustomModelData(customModelData);
         item.setItemMeta(itemMeta);
         return item;
     }
     public static ItemStack tool(Material material, Component name, List<Component> lore, boolean unbreakable, Map<Enchantment, Integer> enchants, List<ItemFlag> flags, CustomModelDataComponent customModelDataComponent) {
-        ItemStack item = create(material, name, lore);
+        ItemStack item = tool(material, name, lore, unbreakable, enchants, flags);
         ItemMeta itemMeta = item.getItemMeta();
         if (itemMeta == null || customModelDataComponent == null) return item;
-        if (flags != null && !flags.isEmpty()) itemMeta.addItemFlags(flags.toArray(new ItemFlag[0]));
         itemMeta.setCustomModelDataComponent(customModelDataComponent);
         item.setItemMeta(itemMeta);
         return item;
@@ -103,9 +103,21 @@ public class ItemCreator {
         ItemStack item = create(Material.PLAYER_HEAD, name, lore);
         SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
         if (skullMeta == null) return item;
-        skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(uuid));
-        item.setItemMeta(skullMeta);
-        return item;
+        try {
+            PlayerProfile profile = Bukkit.createProfile(uuid);
+            profile.complete();
+            skullMeta.setPlayerProfile(profile);
+            item.setItemMeta(skullMeta);
+            return item;
+        } catch (Exception e) {
+            skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(uuid));
+            item.setItemMeta(skullMeta);
+            return item;
+        }
+    }
+
+    public static ItemStack errorItem() {
+        return create(Material.BARRIER, MiniMessage.miniMessage().deserialize("<red>!! ERROR !!"));
     }
 
 }

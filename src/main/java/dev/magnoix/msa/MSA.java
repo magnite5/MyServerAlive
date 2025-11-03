@@ -2,12 +2,15 @@ package dev.magnoix.msa;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.slikey.effectlib.EffectManager;
+import dev.magnoix.msa.commands.LeaderboardCommand;
 import dev.magnoix.msa.commands.ParticleTestCommand;
 import dev.magnoix.msa.commands.StatisticCommand;
+import dev.magnoix.msa.commands.TitleCommand;
 import dev.magnoix.msa.databases.PluginDatabase;
 import dev.magnoix.msa.events.MiscEvents;
 import dev.magnoix.msa.events.PlayerEvents;
 import dev.magnoix.msa.messages.Msg;
+import dev.magnoix.msa.utils.StartupUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
@@ -35,11 +38,11 @@ public final class MSA extends JavaPlugin {
         }
 
         this.scheduler = getServer().getScheduler();
-        Msg.init(this.getLogger());
+        Msg.init(this);
 
         effectManager = new EffectManager(this);
         getServer().getPluginManager().registerEvents(new MiscEvents(), this);
-        getServer().getPluginManager().registerEvents(new PlayerEvents(pluginDatabase.getStatisticsManager()), this);
+        getServer().getPluginManager().registerEvents(new PlayerEvents(pluginDatabase.getStatisticsManager(), pluginDatabase.getTitleManager(), getPlugin(MSA.class)), this);
 
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             LiteralCommandNode<CommandSourceStack> testNode = dev.magnoix.msa.commands.TestCommand.create();
@@ -47,10 +50,16 @@ public final class MSA extends JavaPlugin {
 
             StatisticCommand statisticCommand = new StatisticCommand(pluginDatabase.getStatisticsManager());
             LiteralCommandNode<CommandSourceStack> statisticNode = statisticCommand.create();
+            LeaderboardCommand leaderboardCommand = new LeaderboardCommand(pluginDatabase.getStatisticsManager());
+            LiteralCommandNode<CommandSourceStack> leaderboardNode = leaderboardCommand.create();
+            TitleCommand titleCommand = new TitleCommand();
+            LiteralCommandNode<CommandSourceStack> titleNode = titleCommand.create(pluginDatabase.getTitleManager());
 
             commands.registrar().register(testNode);
             commands.registrar().register(particleTestNode);
-            commands.registrar().register(statisticNode);
+            StartupUtils.registerCommandWithAliases(commands, statisticNode, "stats", "stat", "st");
+            StartupUtils.registerCommandWithAliases(commands, leaderboardNode, "lb", "top");
+            StartupUtils.registerCommandWithAliases(commands, titleNode, "tt", "ranks", "labels");
         });
 
     }

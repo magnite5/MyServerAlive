@@ -1,14 +1,17 @@
 package dev.magnoix.msa.events;
 
 import dev.magnoix.msa.databases.StatisticsManager;
+import dev.magnoix.msa.databases.TitleManager;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.SQLException;
 
-public record PlayerEvents(StatisticsManager statisticsManager) implements Listener {
+public record PlayerEvents(StatisticsManager statisticsManager, TitleManager titleManager, JavaPlugin plugin) implements Listener {
 
     @EventHandler
     public void playerDeath(PlayerDeathEvent event) {
@@ -24,5 +27,10 @@ public record PlayerEvents(StatisticsManager statisticsManager) implements Liste
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    @EventHandler
+    public void playerJoin(PlayerJoinEvent event) {
+        titleManager.handlePlayerJoin(event, plugin);
     }
 }
