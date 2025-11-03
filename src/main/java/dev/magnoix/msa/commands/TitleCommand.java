@@ -1,15 +1,20 @@
 package dev.magnoix.msa.commands;
 
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.TitleManager;
 import dev.magnoix.msa.menus.TitleMenu;
 import dev.magnoix.msa.messages.Msg;
+import dev.magnoix.msa.utils.TextUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
@@ -67,15 +72,17 @@ public class TitleCommand {
             .then(Commands.literal("create")
                 .requires(requirePermission("msd.titles.create", "msd.titles.*", "msd.*"))
                 .then(Commands.argument("name", StringArgumentType.string())
-                    .then(Commands.argument("prefix", StringArgumentType.greedyString())
+                    .then(Commands.argument("prefix", TrailingSpaceStringArgument.string())
                         .executes(ctx -> {
                             CommandSender sender = ctx.getSource().getSender();
                             String name = ctx.getArgument("name", String.class);
                             String prefix = ctx.getArgument("prefix", String.class);
                             try {
                                 TitleManager.title newTitle = titleManager.createTitle(name, prefix);
+                                titleManager.syncTitleUpdate(newTitle.id(), true);
                                 Msg.miniMsg("<dark_aqua>Created the new <gold>\"<yellow>" + newTitle.name() + "<gold>\" <dark_aqua>title ID <i><dark_gray>" + newTitle.id() + "</i>", sender);
-                                if (name.charAt(name.length() - 1) != ' ') Msg.miniMsg("<yellow>Warning: There is no space at the end of the prefix; <i>The prefix will be stuck to the player's name in practice.</i>", sender);
+                                String unformattedPrefix = PlainTextComponentSerializer.plainText().serialize(TextUtils.parseMixedFormatting(prefix));
+                                if (unformattedPrefix.endsWith(" ")) Msg.miniMsg("<yellow>Warning: There is no space at the end of the prefix; <i>The prefix will be stuck to the player's name in practice.</i>", sender);
                                 return 1;
                             } catch (TitleManager.DuplicateTitleException e) {
                                 Msg.miniMsg("<red>A title with the name <gold>\"<yellow>" + name + "<gold>\" <red> already exists.", sender);
@@ -109,7 +116,7 @@ public class TitleCommand {
                 .then(Commands.argument("name", StringArgumentType.string())
                     .suggests(this::suggestTitleNames)
                     .then(Commands.literal("prefix")
-                        .then(Commands.argument("newPrefix", StringArgumentType.greedyString())
+                        .then(Commands.argument("newPrefix", TrailingSpaceStringArgument.string())
                             .executes(ctx -> {
                                 CommandSender sender =  ctx.getSource().getSender();
                                 String name =  ctx.getArgument("name", String.class);
@@ -265,5 +272,18 @@ public class TitleCommand {
         OfflinePlayer onlinePlayer = Bukkit.getPlayerExact(name);
         if (onlinePlayer != null) return onlinePlayer;
         return Bukkit.getOfflinePlayer(name);
+    }
+
+    public static class TrailingSpaceStringArgument implements ArgumentType<String> {
+        @Override
+        public String parse(StringReader reader) throws CommandSyntaxException {
+            int start = reader.getCursor();
+            reader.setCursor(reader.getTotalLength());
+            return reader.getString().substring(start);
+        }
+
+        public static TrailingSpaceStringArgument string() {
+            return new TrailingSpaceStringArgument();
+        }
     }
 }

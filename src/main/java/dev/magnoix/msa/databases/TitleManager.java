@@ -65,6 +65,11 @@ public class TitleManager {
         }
     }
 
+    /**
+     * Updates a player's LuckPerms prefix, with a weight of 10.
+     * @param uuid The UUID of the player whose prefix to update.
+     * @param prefix The new prefix.
+     */
     private void updateLuckPermsPrefix(UUID uuid, String prefix) {
         User user =  luckPerms.getUserManager().getUser(uuid);
         if (user == null) {
@@ -93,6 +98,11 @@ public class TitleManager {
         user.data().add(prefixNode);
     }
 
+    /**
+     * Synchronizes a player's luckperms prefix with their active title's prefix.
+     * @param uuid The UUID of the player whose prefix to synchronize.
+     * @throws SQLException If a database access error occurs.
+     */
     public void syncLuckPermsPrefix(UUID uuid) throws SQLException {
         title activeTitle = getActiveTitle(uuid);
         String activePrefix = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(mm.deserialize(activeTitle.prefix));
@@ -107,6 +117,21 @@ public class TitleManager {
             user.data().add(prefixNode);
             luckPerms.getUserManager().saveUser(user);
         }
+    }
+
+    /**
+     * Synchronizes the update of a title to the prefix of all players with that title currently equipped.
+     * @param titleId The ID of the title to sync.
+     * @param log Whether to log the number of players synchronized. Default: false
+     * @throws SQLException If a database access error occurs.
+     */
+    public void syncTitleUpdate(int titleId, boolean log) throws SQLException {
+        List<UUID> players = getPlayersWithActiveTitle(titleId);
+        for (UUID uuid : players) syncLuckPermsPrefix(uuid);
+        if (log) Msg.log("Updated the active prefix for " + players.size() + " players.");
+    }
+    public void syncTitleUpdate(int titleId) throws SQLException {
+        syncTitleUpdate(titleId, false);
     }
 
     public void handlePlayerJoin(PlayerJoinEvent event, JavaPlugin plugin) {
@@ -126,7 +151,6 @@ public class TitleManager {
     TODO:
         - Create methods to:
             - Get relation count / depth
-            - Get players who have a title
             - (Optional) Give / revoke all titles to / from a player
             - (Optional) Batch Operation support
      */
@@ -335,6 +359,28 @@ public class TitleManager {
     }
 
     // --- Player Title Management ---
+
+    public List<UUID> getPlayersWithTitle(int titleId) throws SQLException {
+        List<UUID> players = new ArrayList<>();
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid FROM player_titles WHERE title_id = ?")) {
+            preparedStatement.setInt(1, titleId);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) players.add(UUID.fromString(resultSet.getString("uuid")));
+
+            }
+        }
+        return players;
+    }
+    public List<UUID> getPlayersWithActiveTitle(int titleId) throws SQLException {
+        List<UUID> players = new ArrayList<>();
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid FROM players WHERE active_title = ?")) {
+            preparedStatement.setInt(1, titleId);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) players.add(UUID.fromString(resultSet.getString("uuid")));
+            }
+        }
+        return players;
+    }
 
     /**
      * Grants a title to a player.
