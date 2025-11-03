@@ -20,9 +20,9 @@ public class TitleMenu { //todo: Un-italicise everything
     private static final int MENU_SIZE = 45; // 5 rows
     private static final int PAGE_SIZE = 27;
     private static final int TITLE_START_SLOT = 9;
-    private TitleManager titleManager;
+    private final TitleManager titleManager;
 
-    private MiniMessage mm = MiniMessage.miniMessage();
+    private final MiniMessage mm = MiniMessage.miniMessage();
 
     public TitleMenu(TitleManager titleManager) {
         this.titleManager = titleManager;
@@ -60,7 +60,7 @@ public class TitleMenu { //todo: Un-italicise everything
         menu.setItem(4, infoButton(activeTitle, titleCount, uuid));
         for (int i = 0; i < pageTitles.size(); i++) {
             TitleManager.title title = pageTitles.get(i);
-            Boolean isActive = (title.id() == activeTitleId);
+            boolean isActive = (title.id() == activeTitleId);
             menu.setItem(i + TITLE_START_SLOT, getTitleItem(title, isActive), (p, event) -> {
                 try {
                     if (isActive) {

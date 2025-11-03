@@ -83,19 +83,17 @@ public class ItemCreator {
         return item;
     }
     public static ItemStack tool(Material material, Component name, List<Component> lore, boolean unbreakable, Map<Enchantment, Integer> enchants, List<ItemFlag> flags, Integer customModelData) {
-        ItemStack item = create(material, name, lore);
+        ItemStack item = tool(material, name, lore, unbreakable, enchants, flags);
         ItemMeta itemMeta = item.getItemMeta();
         if (itemMeta == null || customModelData == null) return item;
-        if (flags != null && !flags.isEmpty()) itemMeta.addItemFlags(flags.toArray(new ItemFlag[0]));
         itemMeta.setCustomModelData(customModelData);
         item.setItemMeta(itemMeta);
         return item;
     }
     public static ItemStack tool(Material material, Component name, List<Component> lore, boolean unbreakable, Map<Enchantment, Integer> enchants, List<ItemFlag> flags, CustomModelDataComponent customModelDataComponent) {
-        ItemStack item = create(material, name, lore);
+        ItemStack item = tool(material, name, lore, unbreakable, enchants, flags);
         ItemMeta itemMeta = item.getItemMeta();
         if (itemMeta == null || customModelDataComponent == null) return item;
-        if (flags != null && !flags.isEmpty()) itemMeta.addItemFlags(flags.toArray(new ItemFlag[0]));
         itemMeta.setCustomModelDataComponent(customModelDataComponent);
         item.setItemMeta(itemMeta);
         return item;
