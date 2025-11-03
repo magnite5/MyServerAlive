@@ -1,9 +1,12 @@
 package dev.magnoix.msa.utils;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TextUtils {
     /**
@@ -45,4 +48,50 @@ public class TextUtils {
         }
         return stringBuilder.toString().trim();
     }
+
+    private static final Pattern LEGACY_PATTERN = Pattern.compile("&(#([A-Fa-f0-9]{6})|[0-9a-fk-orA-FK-OR])");
+
+    public static Component parseMixedFormatting(String input) {
+        Matcher matcher = LEGACY_PATTERN.matcher(input);
+        StringBuffer sb = new StringBuffer();
+
+        while (matcher.find()) {
+            String group = matcher.group(1);
+            String replacement;
+            if (group.startsWith("#")) {
+                replacement = "<#" + group.substring(1).toLowerCase() + ">";
+            } else {
+                replacement = switch (group.toLowerCase()) {
+                    case "0" -> "<black>";
+                    case "1" -> "<dark_blue>";
+                    case "2" -> "<dark_green>";
+                    case "3" -> "<dark_aqua>";
+                    case "4" -> "<dark_red>";
+                    case "5" -> "<dark_purple>";
+                    case "6" -> "<gold>";
+                    case "7" -> "<gray>";
+                    case "8" -> "<dark_gray>";
+                    case "9" -> "<blue>";
+                    case "a" -> "<green>";
+                    case "b" -> "<aqua>";
+                    case "c" -> "<red>";
+                    case "d" -> "<light_purple>";
+                    case "e" -> "<yellow>";
+                    case "f" -> "<white>";
+                    case "k" -> "<obf>";
+                    case "l" -> "<b>";
+                    case "m" -> "<st>";
+                    case "n" -> "<u>";
+                    case "o" -> "<i>";
+                    case "r" -> "<reset>";
+                    default -> "";
+                };
+            }
+            matcher.appendReplacement(sb, replacement);
+        }
+        matcher.appendTail(sb);
+
+        return MiniMessage.miniMessage().deserialize(sb.toString());
+    }
+
 }

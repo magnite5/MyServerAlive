@@ -171,7 +171,7 @@ public class TitleCommand {
                                 try {
                                     TitleManager.title title = titleManager.getTitleFromName(name);
                                     if (title != null) {
-                                        titleManager.setActiveTitle(target.getUniqueId(), title.id());
+                                        titleManager.setActivePrefix(target.getUniqueId(), title.id());
                                         Msg.miniMsg("<dark_aqua>Successfully set <gold>" + target.getName() + "<dark_aqua>'s active title to <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>ID <i><dark_gray>" + title.id() + "</i>", sender);
                                     } else {
                                         Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\"<yellow>exists.", sender);
