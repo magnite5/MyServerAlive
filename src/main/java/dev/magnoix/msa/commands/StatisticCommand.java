@@ -19,6 +19,7 @@ import org.bukkit.entity.Player;
 import java.sql.SQLException;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 
 public class StatisticCommand {
@@ -49,10 +50,19 @@ public class StatisticCommand {
         };
     }
 
+    private static Predicate<CommandSourceStack> requirePermission(String... perms) {
+        return src -> {
+            CommandSender sender = src.getSender();
+            for (String perm : perms) if (sender.hasPermission(perm)) return true;
+            return false;
+        };
+    }
+
     public LiteralCommandNode<CommandSourceStack> create() {
         return Commands.literal("statistic")
             // "get" structure
             .then(Commands.literal("get")
+                .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.argument("type", StringArgumentType.word())
@@ -62,6 +72,7 @@ public class StatisticCommand {
                         })
                         .executes(this::subCommandGet))))
             .then(Commands.literal("?")
+                .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.argument("type", StringArgumentType.word())
@@ -72,6 +83,7 @@ public class StatisticCommand {
                         .executes(this::subCommandGet))))
             // "set" structure
             .then(Commands.literal("set")
+                .requires(requirePermission("msd.stats.set", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.argument("type", StringArgumentType.word())
@@ -82,6 +94,7 @@ public class StatisticCommand {
                         .then(Commands.argument("value", IntegerArgumentType.integer())
                             .executes(this::subCommandSet)))))
             .then(Commands.literal("=")
+                .requires(requirePermission("msd.stats.set", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.argument("type", StringArgumentType.word())
@@ -93,6 +106,7 @@ public class StatisticCommand {
                             .executes(this::subCommandSet)))))
             // "add" structure
             .then(Commands.literal("add")
+                .requires(requirePermission("msd.stats.add", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.argument("type", StringArgumentType.word())
@@ -103,6 +117,7 @@ public class StatisticCommand {
                         .then(Commands.argument("amount", IntegerArgumentType.integer())
                             .executes(this::subCommandAdd)))))
             .then(Commands.literal("+")
+                .requires(requirePermission("msd.stats.add", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.argument("type", StringArgumentType.word())
@@ -114,6 +129,7 @@ public class StatisticCommand {
                             .executes(this::subCommandAdd)))))
             // "multiply" structure
             .then(Commands.literal("multiply")
+                .requires(requirePermission("msd.stats.multiply", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.argument("type", StringArgumentType.word())
@@ -124,6 +140,7 @@ public class StatisticCommand {
                         .then(Commands.argument("multiplier", IntegerArgumentType.integer())
                             .executes(this::subCommandMultiply)))))
             .then(Commands.literal("*")
+                .requires(requirePermission("msd.stats.multiply", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.argument("type", StringArgumentType.word())
@@ -135,10 +152,12 @@ public class StatisticCommand {
                             .executes(this::subCommandMultiply)))))
             // "reset"
             .then(Commands.literal("reset")
+                .requires(requirePermission("msd.stats.reset", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .executes(this::subCommandReset)))
             .then(Commands.literal("//")
+                .requires(requirePermission("msd.stats.reset", "msd.stats.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .executes(this::subCommandReset)))

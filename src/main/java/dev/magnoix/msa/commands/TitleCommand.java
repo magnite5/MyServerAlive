@@ -18,11 +18,11 @@ import org.bukkit.entity.Player;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 
 public class TitleCommand {
     private TitleManager titleManager;
     private TitleMenu titleMenu;
-    // TODO: Add command logic here (minimum include: create, delete titles, and open title viewer)
 
     public CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestTitleNames(
         CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder
@@ -50,20 +50,22 @@ public class TitleCommand {
         };
     }
 
+    private static Predicate<CommandSourceStack> requirePermission(String... perms) {
+        return src -> {
+            CommandSender sender = src.getSender();
+            for (String perm : perms) if (sender.hasPermission(perm)) return true;
+            return false;
+        };
+    }
+
+
     public LiteralCommandNode<CommandSourceStack> create(TitleManager titleManager) {
         this.titleManager = titleManager;
         this.titleMenu = new TitleMenu(titleManager);
         return Commands.literal("titles")
-            .executes(ctx -> {
-                CommandSender sender = ctx.getSource().getSender();
-                if (sender instanceof Player) {
-                    titleMenu.open((Player) sender, 0);
-                } else {
-                    sender.sendMessage("This GUI can only be opened by a player.");
-                }
-                return 1;
-            })
+            .executes(this::commandGui)
             .then(Commands.literal("create")
+                .requires(requirePermission("msd.titles.create", "msd.titles.*", "msd.*"))
                 .then(Commands.argument("name", StringArgumentType.string())
                     .then(Commands.argument("prefix", StringArgumentType.greedyString())
                         .executes(ctx -> {
@@ -84,6 +86,7 @@ public class TitleCommand {
                             }
                         }))))
             .then(Commands.literal("delete")
+                .requires(requirePermission("msd.titles.delete", "msd.titles.*", "msd.*"))
                 .then(Commands.argument("name", StringArgumentType.string())
                     .suggests(this::suggestTitleNames)
                     .executes(ctx -> {
@@ -102,6 +105,7 @@ public class TitleCommand {
                         }
                     })))
             .then(Commands.literal("edit")
+                .requires(requirePermission("msd.titles.edit", "msd.titles.*", "msd.*"))
                 .then(Commands.argument("name", StringArgumentType.string())
                     .suggests(this::suggestTitleNames)
                     .then(Commands.literal("prefix")
@@ -138,6 +142,7 @@ public class TitleCommand {
                                 }
                             })))))
             .then(Commands.literal("sync")
+                .requires(requirePermission("msd.titles.sync", "msd.titles.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .executes(ctx -> {
@@ -156,9 +161,11 @@ public class TitleCommand {
                         }
                     })))
             .then(Commands.literal("player")
+                .requires(requirePermission("msd.titles.player", "msd.titles.*", "msd.*"))
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.literal("active")
+                        .requires(requirePermission("msd.titles.player.active", "msd.titles.player.*", "msd.titles.*", "msd.*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
@@ -185,6 +192,7 @@ public class TitleCommand {
                                 }
                             })))
                     .then(Commands.literal("give")
+                        .requires(requirePermission("msd.titles.player.give", "msd.titles.player.*", "msd.titles.*", "msd.*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
@@ -210,6 +218,7 @@ public class TitleCommand {
                                 }
                             })))
                     .then(Commands.literal("revoke")
+                        .requires(requirePermission("msd.titles.player.give", "msd.titles.player.*", "msd.titles.*", "msd.*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
@@ -238,6 +247,16 @@ public class TitleCommand {
 
     private boolean isTargetValid(OfflinePlayer target) {
         return target != null && (target.hasPlayedBefore() || target.isOnline());
+    }
+
+    private int commandGui(CommandContext<CommandSourceStack> ctx) {
+        CommandSender sender = ctx.getSource().getSender();
+        if (sender instanceof Player) {
+            titleMenu.open((Player) sender, 0);
+        } else {
+            sender.sendMessage("This GUI can only be opened by a player.");
+        }
+        return 1;
     }
 
     protected OfflinePlayer resolveTarget(CommandContext<CommandSourceStack> ctx) {
