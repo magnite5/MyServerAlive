@@ -24,7 +24,7 @@ public class LeaderboardCommand {
         this.statisticsManager = statisticsManager;
         Set<String> validStats;
         try {
-            validStats = statisticsManager.getValidColumns();
+            validStats = statisticsManager.getValidStatisticTypes();
             Msg.log("(LB Command): Loaded statistics: " + validStats);
         } catch (Exception e) {
             Msg.log(Level.SEVERE, "(LB Command): Failed to load valid statistics: " + e.getMessage());

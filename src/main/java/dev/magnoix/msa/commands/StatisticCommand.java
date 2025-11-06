@@ -31,7 +31,7 @@ public class StatisticCommand {
         this.statisticsManager = statisticsManager;
         Set<String> validStats;
         try {
-            validStats = statisticsManager.getValidColumns();
+            validStats = statisticsManager.getValidStatisticTypes();
             Msg.log("Loaded statistics: " + validStats);
         } catch (Exception e) {
             Msg.log(Level.SEVERE, "Failed to load valid statistics: " + e.getMessage());
@@ -248,7 +248,7 @@ public class StatisticCommand {
 
         try {
             int oldValue = statisticsManager.getStatistic(target.getUniqueId(), type);
-            statisticsManager.addStatistic(target.getUniqueId(), type, value);
+            statisticsManager.addToStatistic(target.getUniqueId(), type, value);
             source.sendMessage(mm.deserialize("<dark_aqua>Set <gold>" + target.getName() + "<dark_aqua>'s <yellow>" + type + "<dark_aqua> to <aqua>" + (oldValue + value) + "<dark_aqua>, formerly <aqua>" + oldValue + "<dark_aqua>."));
             return 1;
         } catch (SQLException e) {
