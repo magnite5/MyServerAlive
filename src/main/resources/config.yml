@@ -1,0 +1,16 @@
+### Config File for the MyServerAlive plugin
+
+# The list of allowed enchantment ids that can be toggles with the /toggle command.
+# Leave empty to disable the command completely.
+# Spaces in enchantment names must be replaced with an underscore.
+# Some examples: "knockback", "thorns", "fire_protection"...
+toggleable-enchants:
+  - "knockback"
+  - "thorns"
+
+settings:
+  # The main permission section to use for player permissions.
+  # For example, the permission to toggle enchantments would be "<value>.toggle.*"
+  # Must be an alphanumeric string. (Only characters A-Z, a-z, 0-9)
+  # Default: msa
+  permission-prefix: msa
