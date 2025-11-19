@@ -4,6 +4,7 @@ import dev.magnoix.msa.messages.Msg;
 import dev.magnoix.msa.utils.TextUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
@@ -66,57 +67,31 @@ public class TitleManager {
     }
 
     /**
-     * Updates a player's LuckPerms prefix, with a weight of 10.
-     * @param uuid The UUID of the player whose prefix to update.
-     * @param prefix The new prefix.
+     * Updates a player's luckperms prefix with the given title's prefix, asynchronously.
+     * @param uuid The UUID of the player whose prefix to synchronize.
+     * @param activeTitle The title to sync to
+     * @throws SQLException If a database access error occurs.
      */
-    private void updateLuckPermsPrefix(UUID uuid, String prefix) {
-        User user =  luckPerms.getUserManager().getUser(uuid);
-        if (user == null) {
-            luckPerms.getUserManager().loadUser(uuid).thenAcceptAsync(thisUser -> {
-                updateLuckPermsPrefix(thisUser, prefix);
-                luckPerms.getUserManager().saveUser(thisUser);
-            });
-            return;
-        }
-        updateLuckPermsPrefix(user, prefix);
-        luckPerms.getUserManager().saveUser(user);
-    }
-    private void updateLuckPermsPrefix(UUID uuid, title title) {
-        updateLuckPermsPrefix(uuid, title.prefix);
-    }
-    private void updateLuckPermsPrefix(User user, String prefix) {
-        String legacyPrefix = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(mm.deserialize(prefix));
-        user.data().clear(node -> node instanceof PrefixNode);
-        PrefixNode prefixNode = PrefixNode.builder(legacyPrefix, 10).build();
-        user.data().add(prefixNode);
-    }
-    private void updateLuckPermsPrefix(User user, Component prefix) {
-        String legacyPrefix = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(prefix);
-        user.data().clear(node -> node instanceof PrefixNode);
-        PrefixNode prefixNode = PrefixNode.builder(legacyPrefix, 10).build();
-        user.data().add(prefixNode);
-    }
+    public void updateLuckPermsPrefixAsync(UUID uuid, title activeTitle) throws SQLException {
+        String activePrefix = LegacyComponentSerializer.legacySection().serialize(mm.deserialize(activeTitle.prefix));
 
+        luckPerms.getUserManager().loadUser(uuid).thenAcceptAsync(user -> {
+            String currentPrefix = user.getCachedData().getMetaData().getPrefix();
+            if (!activePrefix.equals(currentPrefix)) {
+                user.data().clear(node -> node instanceof PrefixNode);
+                PrefixNode prefixNode = PrefixNode.builder(activePrefix, 10).build();
+                user.data().add(prefixNode);
+                luckPerms.getUserManager().saveUser(user);
+            }
+        });
+    }
     /**
-     * Synchronizes a player's luckperms prefix with their active title's prefix.
+     * Synchronizes a player's luckperms prefix with their active title's prefix, asynchronously.
      * @param uuid The UUID of the player whose prefix to synchronize.
      * @throws SQLException If a database access error occurs.
      */
-    public void syncLuckPermsPrefix(UUID uuid) throws SQLException {
-        title activeTitle = getActiveTitle(uuid);
-        String activePrefix = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(mm.deserialize(activeTitle.prefix));
-
-        User user = luckPerms.getUserManager().getUser(uuid);
-        if (user == null) user = luckPerms.getUserManager().loadUser(uuid).join();
-
-        String currentPrefix = user.getCachedData().getMetaData().getPrefix();
-        if (!activePrefix.equals(currentPrefix)) {
-            user.data().clear(node -> node instanceof PrefixNode);
-            PrefixNode prefixNode = PrefixNode.builder(activePrefix, 10).build();
-            user.data().add(prefixNode);
-            luckPerms.getUserManager().saveUser(user);
-        }
+    public void syncLuckPermsPrefixAsync(UUID uuid) throws SQLException {
+        updateLuckPermsPrefixAsync(uuid, getActiveTitle(uuid));
     }
 
     /**
@@ -127,7 +102,7 @@ public class TitleManager {
      */
     public void syncTitleUpdate(int titleId, boolean log) throws SQLException {
         List<UUID> players = getPlayersWithActiveTitle(titleId);
-        for (UUID uuid : players) syncLuckPermsPrefix(uuid);
+        for (UUID uuid : players) syncLuckPermsPrefixAsync(uuid);
         if (log) Msg.log("Updated the active prefix for " + players.size() + " players.");
     }
     public void syncTitleUpdate(int titleId) throws SQLException {
@@ -136,11 +111,16 @@ public class TitleManager {
 
     public void handlePlayerJoin(PlayerJoinEvent event, JavaPlugin plugin) {
         UUID uuid = event.getPlayer().getUniqueId();
+
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
                 title active = getActiveTitle(uuid);
-                if (active == null) setActivePrefix(uuid, 1);
-                if (active != null) updateLuckPermsPrefix(uuid, active);
+                if (active == null) {
+                    setActivePrefix(uuid, 1);
+                    active = getActiveTitle(uuid);
+                } else {
+                    updateLuckPermsPrefixAsync(uuid, active);
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -165,6 +145,9 @@ public class TitleManager {
 
     // --- Title Management ---
 
+    /**
+     * Ensures that a default title exists, and creates one if it doesn't.
+     */
     public void confirmDefaultTitle() {
         try {
             title title = getTitleFromName("default");
@@ -506,7 +489,7 @@ public class TitleManager {
 
     public void setActivePrefix(UUID uuid, int titleId) throws SQLException {
         setActiveTitle(uuid, titleId);
-        syncLuckPermsPrefix(uuid);
+        syncLuckPermsPrefixAsync(uuid);
     }
 
     /**
