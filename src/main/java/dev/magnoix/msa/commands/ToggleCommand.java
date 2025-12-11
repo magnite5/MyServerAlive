@@ -1,7 +1,12 @@
 package dev.magnoix.msa.commands;
 
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.PluginConfig;
+import dev.magnoix.msa.messages.Msg;
 import dev.magnoix.msa.utils.TextUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -10,11 +15,14 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,8 +34,55 @@ public class ToggleCommand {
         this.config = config;
         this.toggleableEnchants = config.getStringList("toggleable-enchants");
     }
+
+    public SuggestionProvider<CommandSourceStack> toggleableEnchantSuggestions(ItemStack item) {
+        return (CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) -> {
+            Map<Enchantment, Integer> toggleableItemEnchants = getToggleableItemEnchants(item);
+            toggleableItemEnchants.forEach((enchantment, level) -> {
+                builder.suggest(enchantment.getKey().getKey());
+            });
+            return CompletableFuture.completedFuture(builder.build());
+        };
+    }
+
     public LiteralCommandNode<CommandSourceStack> create() {
-        return Commands.literal("toggle").build();
+        return Commands.literal("toggle")
+            .executes(ctx -> {
+                CommandSender sender = ctx.getSource().getSender();
+                if (!(sender instanceof Player player)) {
+                    Msg.msg("You must be a player to use this command.", sender);
+                    return 1;
+                }
+                ItemStack item = player.getInventory().getItemInMainHand();
+                Msg.miniMsg("<dark_aqua>Toggle an enchantment on your held item.", sender);
+                getToggleableItemEnchants(item).forEach((enchantment, level) -> {
+                    Msg.miniMsg("  <gold>-> " + enchantment.getKey().getKey(), sender);
+                });
+                return 1;
+            })
+            .then(Commands.argument("enchant", StringArgumentType.word())
+                .suggests((ctx, builder) -> {
+                    CommandSender sender = ctx.getSource().getSender();
+                    if (!(sender instanceof Player player)) return CompletableFuture.completedFuture(builder.build());
+                    ItemStack item = player.getInventory().getItemInMainHand();
+                    return toggleableEnchantSuggestions(player.getInventory().getItemInMainHand()).getSuggestions(ctx, builder);
+                })
+                .executes(ctx -> {
+                    CommandSender sender = ctx.getSource().getSender();
+                    if (!(sender instanceof Player player)) {
+                        Msg.msg("You must be a player to use this command.", sender);
+                        return 1;
+                    }
+                    ItemStack item = player.getInventory().getItemInMainHand();
+                    String enchant = ctx.getArgument("enchant", String.class);
+                    if (toggleEnchant(item, enchant)) {
+                        Msg.miniMsg("<dark_aqua>Successfully toggled the <gold>" + enchant + " <dark_aqua>enchantment.", sender);
+                    } else {
+                        Msg.miniMsg("<red>An error occurred while toggling the " + enchant + " enchantment.", sender);
+                    }
+                    return 1;
+                }))
+            .build();
     }
 
     // Enchant-Specific Helper Methods
@@ -88,7 +143,7 @@ public class ToggleCommand {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return false;
 
-        Enchantment enchant = getEnchantFromName(enchantName);
+        Enchantment enchant = getEnchantFromName(enchantName.toLowerCase(Locale.ROOT));
         if (enchant == null) return false;
 
         int level = item.getEnchantmentLevel(enchant);
@@ -96,7 +151,7 @@ public class ToggleCommand {
 
         // if enchant is active -> disable it
         if (item.containsEnchantment(enchant)) {
-            item.removeEnchantment(enchant);
+            meta.removeEnchant(enchant);
             Component disabled = Component.text(
                 TextUtils.capitalize(enchant.getKey().getKey().replace("_", " ")) + " " + TextUtils.toRomanNumerals(level),
                 NamedTextColor.GRAY,
@@ -106,18 +161,29 @@ public class ToggleCommand {
             meta.lore(lore);
             item.setItemMeta(meta);
             return true;
+        } else {
+            Msg.log("Tried to remove an enchantment that wasn't active.");
         }
 
-        // if enchant is disabled in lore -> re-enable
+        // if enchant is disabled -> re-enable it
         Iterator<Component> it = lore.iterator();
         while (it.hasNext()) {
             Component component = it.next();
             String plain = TextUtils.getPlainText(component);
-            if (plain.toLowerCase().startsWith(enchant.getKey().getKey().replace("_", " "))) {
+            String pretty = enchant.getKey().getKey().replace("_", " ");
+            if (plain.toLowerCase().startsWith(pretty.toLowerCase())) {
                 it.remove();
-                item.addUnsafeEnchantment(enchant, level > 0 ? level : 1);
+                int storedLevel = 1;
+                Matcher romanMatcher = Pattern.compile("([IVXLCDM]+)$").matcher(plain);
+                if (romanMatcher.find()) {
+                    storedLevel = TextUtils.parseRomanNumerals(romanMatcher.group(1));
+                } else {
+                    Matcher numMatcher = Pattern.compile("(\\d+)$").matcher(plain);
+                    if (numMatcher.find()) storedLevel = Integer.parseInt(numMatcher.group(1));
+                }
                 meta.lore(lore);
                 item.setItemMeta(meta);
+                item.addUnsafeEnchantment(enchant, storedLevel);
                 return true;
             }
         }
