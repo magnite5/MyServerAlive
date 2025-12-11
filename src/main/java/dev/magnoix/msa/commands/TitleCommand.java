@@ -63,7 +63,6 @@ public class TitleCommand {
         };
     }
 
-
     public LiteralCommandNode<CommandSourceStack> create(TitleManager titleManager) {
         this.titleManager = titleManager;
         this.titleMenu = new TitleMenu(titleManager);
@@ -72,7 +71,7 @@ public class TitleCommand {
             .then(Commands.literal("create")
                 .requires(requirePermission("msd.titles.create", "msd.titles.*", "msd.*"))
                 .then(Commands.argument("name", StringArgumentType.string())
-                    .then(Commands.argument("prefix", TrailingSpaceStringArgument.string())
+                    .then(Commands.argument("prefix", StringArgumentType.greedyString())
                         .executes(ctx -> {
                             CommandSender sender = ctx.getSource().getSender();
                             String name = ctx.getArgument("name", String.class);
@@ -116,7 +115,7 @@ public class TitleCommand {
                 .then(Commands.argument("name", StringArgumentType.string())
                     .suggests(this::suggestTitleNames)
                     .then(Commands.literal("prefix")
-                        .then(Commands.argument("newPrefix", TrailingSpaceStringArgument.string())
+                        .then(Commands.argument("newPrefix", StringArgumentType.greedyString())
                             .executes(ctx -> {
                                 CommandSender sender =  ctx.getSource().getSender();
                                 String name =  ctx.getArgument("name", String.class);
@@ -272,18 +271,5 @@ public class TitleCommand {
         OfflinePlayer onlinePlayer = Bukkit.getPlayerExact(name);
         if (onlinePlayer != null) return onlinePlayer;
         return Bukkit.getOfflinePlayer(name);
-    }
-
-    public static class TrailingSpaceStringArgument implements ArgumentType<String> {
-        @Override
-        public String parse(StringReader reader) throws CommandSyntaxException {
-            int start = reader.getCursor();
-            reader.setCursor(reader.getTotalLength());
-            return reader.getString().substring(start);
-        }
-
-        public static TrailingSpaceStringArgument string() {
-            return new TrailingSpaceStringArgument();
-        }
     }
 }

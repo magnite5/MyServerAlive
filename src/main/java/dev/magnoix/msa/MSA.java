@@ -2,11 +2,10 @@ package dev.magnoix.msa;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import de.slikey.effectlib.EffectManager;
-import dev.magnoix.msa.commands.LeaderboardCommand;
-import dev.magnoix.msa.commands.ParticleTestCommand;
-import dev.magnoix.msa.commands.StatisticCommand;
-import dev.magnoix.msa.commands.TitleCommand;
+import dev.magnoix.msa.commands.*;
+import dev.magnoix.msa.databases.PluginConfig;
 import dev.magnoix.msa.databases.PluginDatabase;
+import dev.magnoix.msa.databases.StatisticsManager;
 import dev.magnoix.msa.events.MiscEvents;
 import dev.magnoix.msa.events.PlayerEvents;
 import dev.magnoix.msa.messages.Msg;
@@ -22,15 +21,31 @@ import java.sql.SQLException;
 import java.util.logging.Logger;
 
 public final class MSA extends JavaPlugin {
+
+    /*
+    TODO:
+        - NetWorth GUI (formerly /cv)
+        - /nw /kills /deaths shortcut commands
+        - /stats summary, /stats help page
+        - /rules command
+        - /unequip
+        - logging big jumps in stats
+     */
+
     private PluginDatabase pluginDatabase;
     private BukkitScheduler scheduler;
     private EffectManager effectManager;
+    private PluginConfig pluginConfig;
 
     @Override
     public void onEnable() {
+        Msg.init(this);
+        this.pluginConfig = new PluginConfig(this.getDataFolder(), "config.yml");
+        getLogger().info("(main) Loading config...");
+
         try {
             if (!getDataFolder().exists()) getDataFolder().mkdirs();
-            pluginDatabase = new PluginDatabase(getDataFolder().getAbsolutePath() + "/msa.db");
+            pluginDatabase = new PluginDatabase(this, pluginConfig, getDataFolder().getAbsolutePath() + "/msa.db");
         } catch (SQLException e) {
             e.printStackTrace();
             getLogger().severe("Failed to connect to database. Disabling plugin. " + e.getMessage());
@@ -38,30 +53,34 @@ public final class MSA extends JavaPlugin {
         }
 
         this.scheduler = getServer().getScheduler();
-        Msg.init(this);
+
+        StatisticsManager statisticsManager = pluginDatabase.getStatisticsManager();
+        statisticsManager.updateStatisticTypes(pluginConfig);
 
         effectManager = new EffectManager(this);
         getServer().getPluginManager().registerEvents(new MiscEvents(), this);
-        getServer().getPluginManager().registerEvents(new PlayerEvents(pluginDatabase.getStatisticsManager(), pluginDatabase.getTitleManager(), getPlugin(MSA.class)), this);
+        getServer().getPluginManager().registerEvents(new PlayerEvents(statisticsManager, pluginDatabase.getTitleManager(), getPlugin(MSA.class)), this);
 
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             LiteralCommandNode<CommandSourceStack> testNode = dev.magnoix.msa.commands.TestCommand.create();
             LiteralCommandNode<CommandSourceStack> particleTestNode = ParticleTestCommand.create(effectManager);
 
-            StatisticCommand statisticCommand = new StatisticCommand(pluginDatabase.getStatisticsManager());
+            StatisticCommand statisticCommand = new StatisticCommand(statisticsManager);
             LiteralCommandNode<CommandSourceStack> statisticNode = statisticCommand.create();
-            LeaderboardCommand leaderboardCommand = new LeaderboardCommand(pluginDatabase.getStatisticsManager());
+            LeaderboardCommand leaderboardCommand = new LeaderboardCommand(statisticsManager);
             LiteralCommandNode<CommandSourceStack> leaderboardNode = leaderboardCommand.create();
             TitleCommand titleCommand = new TitleCommand();
             LiteralCommandNode<CommandSourceStack> titleNode = titleCommand.create(pluginDatabase.getTitleManager());
+            ToggleCommand toggleCommand = new ToggleCommand(this.pluginConfig);
+            LiteralCommandNode<CommandSourceStack> toggleNode = toggleCommand.create();
 
             commands.registrar().register(testNode);
             commands.registrar().register(particleTestNode);
+            commands.registrar().register(toggleNode);
             StartupUtils.registerCommandWithAliases(commands, statisticNode, "stats", "stat", "st");
             StartupUtils.registerCommandWithAliases(commands, leaderboardNode, "lb", "top");
             StartupUtils.registerCommandWithAliases(commands, titleNode, "tt", "ranks", "labels");
         });
-
     }
 
     @Override
@@ -81,6 +100,7 @@ public final class MSA extends JavaPlugin {
     public @NotNull Logger getLogger() {
         return super.getLogger();
     }
+    public @NotNull PluginConfig getPluginConfig() { return pluginConfig; }
 
     public BukkitScheduler getScheduler() { return scheduler; }
     public EffectManager getEffectManager() { return effectManager; }

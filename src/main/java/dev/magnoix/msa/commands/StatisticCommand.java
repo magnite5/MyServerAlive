@@ -32,9 +32,8 @@ public class StatisticCommand {
         Set<String> validStats;
         try {
             validStats = statisticsManager.getValidStatisticTypes();
-            Msg.log("Loaded statistics: " + validStats);
         } catch (Exception e) {
-            Msg.log(Level.SEVERE, "Failed to load valid statistics: " + e.getMessage());
+            Msg.log(Level.SEVERE, "Failed to load valid command statistics: " + e.getMessage());
             e.printStackTrace();
             validStats = Set.of(); // Empty set as a fallback
         }
@@ -81,6 +80,7 @@ public class StatisticCommand {
                             return builder.buildFuture();
                         })
                         .executes(this::subCommandGet))))
+
             // "set" structure
             .then(Commands.literal("set")
                 .requires(requirePermission("msd.stats.set", "msd.stats.*", "msd.*"))
@@ -104,6 +104,7 @@ public class StatisticCommand {
                         })
                         .then(Commands.argument("value", IntegerArgumentType.integer())
                             .executes(this::subCommandSet)))))
+
             // "add" structure
             .then(Commands.literal("add")
                 .requires(requirePermission("msd.stats.add", "msd.stats.*", "msd.*"))
@@ -127,6 +128,7 @@ public class StatisticCommand {
                         })
                         .then(Commands.argument("amount", IntegerArgumentType.integer())
                             .executes(this::subCommandAdd)))))
+
             // "multiply" structure
             .then(Commands.literal("multiply")
                 .requires(requirePermission("msd.stats.multiply", "msd.stats.*", "msd.*"))
@@ -150,6 +152,7 @@ public class StatisticCommand {
                         })
                         .then(Commands.argument("multiplier", IntegerArgumentType.integer())
                             .executes(this::subCommandMultiply)))))
+
             // "reset"
             .then(Commands.literal("reset")
                 .requires(requirePermission("msd.stats.reset", "msd.stats.*", "msd.*"))
@@ -164,6 +167,11 @@ public class StatisticCommand {
             .build();
     }
 
+    /**
+     * Resolve an OfflinePlayer target from a Command Context's "target" argument
+     * @param ctx The Command Context
+     * @return the OfflinePlayer to target
+     */
     protected OfflinePlayer resolveTarget(CommandContext<CommandSourceStack> ctx) {
         String name = ctx.getArgument("target", String.class);
         if (name == null) return null;

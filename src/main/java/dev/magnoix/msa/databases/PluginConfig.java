@@ -13,6 +13,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * A class with which to interface with any .yml file
+ */
 public class PluginConfig {
     private final File file;
     private FileConfiguration config;
@@ -27,6 +30,7 @@ public class PluginConfig {
 
         // Copy default from resources if missing
         if (!file.exists()) {
+            Msg.log("Creating config file: " + fileName);
             try (InputStream in = getClass().getClassLoader().getResourceAsStream(fileName)) {
                 if (in == null) {
                     throw new IllegalArgumentException("Default config " + fileName + " not found in resources!");
@@ -37,6 +41,7 @@ public class PluginConfig {
                 Msg.log("Failed to copy default config file: " + e.getMessage());
             }
         }
+        Msg.log("Created config file: " + fileName);
 
         // Load config
         this.config = YamlConfiguration.loadConfiguration(file);
@@ -59,9 +64,7 @@ public class PluginConfig {
     }
     public void removeValue(String sectionTitle, String value) {
         List<String> values = getStringList(sectionTitle);
-        if (values.contains(value)) {
-            values.remove(value);
-        }
+        values.remove(value);
     }
 
     /* - Trees - */

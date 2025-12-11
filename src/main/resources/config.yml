@@ -8,9 +8,23 @@ toggleable-enchants:
   - "knockback"
   - "thorns"
 
+  # Config section for anything relating to Statistics
+statistics:
+  # Extra statistic types to consider valid.
+  # The plugin is hardcoded to include kills, deaths and networth. These cannot be added or removed.
+  # Any spaces in entries will be converted to underscores, and it will be lowercase.
+  # Must be alphanumeric strings, including underscores. (Only characters A-Z, a-z, 0-9, _)
+  custom-types:
+    - "wins"
+  # The statistics to log events for. Same rules as "custom-types".
+  # Statistic types included in this list have their events logged in logs/stats.log
+  # Includes "networth" by default
+  logged-types:
+    - "networth"
+
 settings:
   # The main permission section to use for player permissions.
   # For example, the permission to toggle enchantments would be "<value>.toggle.*"
-  # Must be an alphanumeric string. (Only characters A-Z, a-z, 0-9)
+  # Must be an alphanumeric string, including underscores. (Only characters A-Z, a-z, 0-9, _)
   # Default: msa
   permission-prefix: msa

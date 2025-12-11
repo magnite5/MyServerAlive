@@ -1,19 +1,26 @@
 package dev.magnoix.msa.databases;
 
+import dev.magnoix.msa.logging.FileLogger;
 import dev.magnoix.msa.messages.Msg;
 import org.bukkit.Bukkit;
+import org.bukkit.plugin.PluginLogger;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.*;
 import java.util.*;
 import java.util.logging.Level;
 
-public class StatisticsManager { //TODO: Use Long or Double instead of int for statistic values
+public class StatisticsManager {
+    //TODO: Use Long or Double instead of int for statistic values
 
     private final Connection connection;
 
+    private final FileLogger statsLogger;
+    private final Set<String> loggedTypes;
+
     private Set<String> validTypes;
 
-    public StatisticsManager(Connection connection) throws SQLException {
+    public StatisticsManager(JavaPlugin plugin, Connection connection, Set<String> loggedTypes ) throws SQLException {
         this.connection = connection;
         try (Statement statement = connection.createStatement()) {
             statement.execute("""
@@ -30,24 +37,38 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
                 CREATE INDEX IF NOT EXISTS idx_uuid_stat_type ON player_stats (uuid, type)
             """);
         }
-        getValidStatisticTypes();
+        statsLogger = new FileLogger(plugin, "stats.log");
+        this.loggedTypes = loggedTypes;
+    }
+
+    /// STAT TYPE MANIPULATION
+
+    /**
+     * Updates & Returns the list of valid statistic types. Should only be called on plugin startup.
+     * @param pluginConfig The Plugin's Configuration manager
+     * @return The updated set of type names.
+     */
+    public Set<String> updateStatisticTypes(PluginConfig pluginConfig) {
+        List<String> builtInTypes = List.of("kills", "deaths", "networth");
+        Set<String> types = new HashSet<>(builtInTypes);
+        pluginConfig.getStringList("statistics.custom-types").forEach(s ->
+            types.add(s.trim().toLowerCase().replaceAll(" ", "_")));
+        loggedTypes.forEach(type -> {
+            if (!types.contains(type)) loggedTypes.remove(type);
+        });
+        validTypes = types;
+        return validTypes;
     }
 
     /**
      * Returns a set of valid statistic type names.
      * @return A set of strings representing valid statistic names.
      */
-    public Set<String> getValidStatisticTypes() throws SQLException {
-        if (validTypes == null || validTypes.isEmpty()) {
-            try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT DISTINCT stat_type FROM player_stats")) {
-                Set<String> types = new HashSet<>();
-                ResultSet resultSet = preparedStatement.executeQuery();
-                while (resultSet.next()) types.add(resultSet.getString("stat_type"));
-                validTypes = types;
-            }
-        }
+    public Set<String> getValidStatisticTypes() {
         return validTypes;
     }
+
+    /// PLAYER MANIPULATION
 
     /**
      * Adds a new player to the statistics database.
@@ -55,7 +76,7 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
      * @throws SQLException If a database access error occurs.
      */
     public void addPlayer(UUID uuid) throws SQLException {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT OR IGNORE INTO player_stats (uuid, stat_type, value) VALUES (?, ?, 0)")) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT OR IGNORE INTO player_stats (uuid, type, value) VALUES (?, ?, 0)")) {
             for (String type : validTypes) {
                 preparedStatement.setString(1, uuid.toString());
                 preparedStatement.setString(2, type);
@@ -102,11 +123,13 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
      * @throws SQLException If a database access error occurs.
      */
     public boolean playerExists(UUID uuid) throws SQLException {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid FROM player_stats WHERE uuid = ?")) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT 1 FROM player_stats WHERE uuid = ? LIMIT 1")) {
             preparedStatement.setString(1, uuid.toString());
             return preparedStatement.executeQuery().next();
         }
     }
+
+    /// STAT MANIPULATION
 
     /**
      * Gets a specific statistic for a player.
@@ -118,9 +141,9 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
      */
     public int getStatistic(UUID uuid, String type) throws SQLException {
         type = type.trim().toLowerCase();
-        if (!validTypes.contains(type)) throw new IllegalArgumentException("Invalid Statistic: " + type);
+        if (!validTypes.contains(type)) throw new IllegalArgumentException("Unknown statistic type: " + type);
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT value FROM player_stats WHERE uuid = ? AND stat_type = ?")) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT value FROM player_stats WHERE uuid = ? AND type = ?")) {
             preparedStatement.setString(1, uuid.toString());
             preparedStatement.setString(2, type);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -136,22 +159,25 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
      * @param uuid  The UUID of the player.
      * @param type  The type of statistic to set.
      * @param value The new value for the statistic.
+     * @return The former value, 0 if a new entry had to be created.
      * @throws SQLException             If a database access error occurs.
      * @throws IllegalArgumentException If the statistic name is invalid.
      */
-    public void setStatistic(UUID uuid, String type, int value) throws SQLException {
+    public int setStatistic(UUID uuid, String type, int value) throws SQLException {
         type = type.trim().toLowerCase();
         if (!validTypes.contains(type)) throw new IllegalArgumentException("Invalid Statistic: " + type);
         if (!playerExists(uuid)) addPlayer(uuid);
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE player_stats SET value = ? WHERE uuid = ? AND stat_type = ?")) {
+        int oldValue = getStatistic(uuid, type);
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE player_stats SET value = ? WHERE uuid = ? AND type = ?")) {
             preparedStatement.setInt(1, value);
             preparedStatement.setString(2, uuid.toString());
             preparedStatement.setString(3, type);
             int updated = preparedStatement.executeUpdate();
 
             if (updated == 0) {
-                try (PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO player_stats (uuid, stat_type, value) VALUES (?, ?, ?)")) {
+                try (PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO player_stats (uuid, type, value) VALUES (?, ?, ?)")) {
                     insertStatement.setString(1, uuid.toString());
                     insertStatement.setString(2, type);
                     insertStatement.setInt(3, value);
@@ -159,6 +185,9 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
                 }
             }
         }
+        if (loggedTypes.contains(type))
+            statsLogger.log("Set " + type + " for " + uuid + " from " + oldValue + " to " + value + ".");
+        return oldValue;
     }
 
     /**
@@ -166,21 +195,30 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
      * @param uuid  The UUID of the player.
      * @param type  The type of statistic to modify.
      * @param value The value to add.
+     * @return The former value, 0 if a new entry had to be created.
      * @throws SQLException If a database access error occurs.
      */
-    public void addToStatistic(UUID uuid, String type, int value) throws SQLException {
+    public int addToStatistic(UUID uuid, String type, int value) throws SQLException {
         type = type.trim().toLowerCase();
         if (!validTypes.contains(type)) throw new IllegalArgumentException("Invalid Statistic: " + type);
         if (!playerExists(uuid)) addPlayer(uuid);
 
+        int oldValue = getStatistic(uuid, type);
+
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-            INSERT INTO player_stats (uuid, stat_type, value) VALUES (?, ?, ?)
-            ON CONFLICT (uuid, stat_type) DO UPDATE SET value = player_stats.value + excluded.value""")) {
+            INSERT INTO player_stats (uuid, type, value) VALUES (?, ?, ?)
+            ON CONFLICT (uuid, type) DO UPDATE SET value = player_stats.value + excluded.value
+        """)) {
             preparedStatement.setString(1, uuid.toString());
             preparedStatement.setString(2, type);
             preparedStatement.setInt(3, value);
             preparedStatement.executeUpdate();
         }
+
+        if (loggedTypes.contains(type)) {
+            statsLogger.log("Added " + value + " to " + type + " for " + uuid + ", from " + oldValue + " to " + (oldValue + value) + ".");
+        }
+        return oldValue;
     }
 
     /**
@@ -188,12 +226,18 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
      * @param uuid       The UUID of the player.
      * @param type       The type of statistic to modify.
      * @param multiplier The multiplier to apply.
+     * @return The former value, 0 if a new entry had to be created.
      * @throws SQLException If a database access error occurs.
      */
-    public void multiplyStatistic(UUID uuid, String type, double multiplier) throws SQLException {
+    public int multiplyStatistic(UUID uuid, String type, double multiplier) throws SQLException {
         type = type.trim().toLowerCase();
-        if (!validTypes.contains(type)) throw new IllegalArgumentException("Invalid Statistic: " + type);
-        setStatistic(uuid, type, (int) (getStatistic(uuid, type) * multiplier));
+        int oldValue = getStatistic(uuid, type); // Already checking for type validity.
+        setStatistic(uuid, type, (int) (oldValue * multiplier));
+
+        if (loggedTypes.contains(type)) {
+            statsLogger.log("Multiplied " + type + " for " + uuid + " by " + multiplier + " from " + oldValue + " to " + (oldValue * multiplier) + ".");
+        }
+        return oldValue;
     }
 
     /**
@@ -206,7 +250,7 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
         type = type.trim().toLowerCase();
         if (!validTypes.contains(type)) throw new IllegalArgumentException("Invalid Statistic: " + type);
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) AS total FROM player_stats WHERE stat_type = ? AND value > 0")) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) AS total FROM player_stats WHERE type = ? AND value > 0")) {
             preparedStatement.setString(1, type);
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) return resultSet.getInt("total");
@@ -214,15 +258,21 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
         return 0;
     }
 
-    // Kills Method
+    /**
+     * Convenience method for adding an amount of kills for a player.
+     */
     public void addKills(UUID uuid, int kills) throws SQLException {
         addToStatistic(uuid, "kills", kills);
     }
 
-    // Deaths Convenience Method
+    /**
+     * Convenience method for adding an amount of deaths for a player.
+     */
     public void addDeaths(UUID uuid, int deaths) throws SQLException {
         addToStatistic(uuid, "deaths", deaths);
     }
+
+    /// LEADERBOARDS
 
     public record LeaderboardEntry(UUID player, double value, int position) {}
 
@@ -238,7 +288,7 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
         type = type.trim().toLowerCase();
         if (!validTypes.contains(type)) return leaderboard;
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid, value FROM player_stats WHERE stat_type = ? ORDER BY value DESC LIMIT ?")) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid, value FROM player_stats WHERE type = ? ORDER BY value DESC LIMIT ?")) {
             preparedStatement.setString(1, type);
             preparedStatement.setInt(2, limit);
 
@@ -271,7 +321,7 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
         if (!validTypes.contains(type)) throw new IllegalArgumentException("Invalid Statistic: " + type);
         if (limit < 1 || offset < 0) throw new IllegalArgumentException("Invalid limit or offset: " + limit + " - " + offset + ". limit must be >= 1, and offset must be >= 0.");
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid, value FROM player_stats WHERE stat_type = ? ORDER BY value DESC LIMIT ? OFFSET ?")) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT uuid, value FROM player_stats WHERE type = ? ORDER BY value DESC LIMIT ? OFFSET ?")) {
             preparedStatement.setString(1, type);
             preparedStatement.setInt(2, limit);
             preparedStatement.setInt(3, offset);
@@ -304,5 +354,10 @@ public class StatisticsManager { //TODO: Use Long or Double instead of int for s
         int offset = startIndex - 1; // zero-based offset for SQL
 
         return getTopPlayers(type, limit, offset);
+    }
+
+    /// LOGGING
+    public FileLogger getLogger() {
+        return statsLogger;
     }
 }

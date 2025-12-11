@@ -23,8 +23,7 @@ public class Msg {
 
     public static void log(Level level, String message) {
         if (logger != null) {
-            // Include plugin signature in log
-            logger.log(level, " [" + pluginName + "] " + message);
+            logger.log(level, message);
         } else {
             Bukkit.getConsoleSender().sendMessage(formatConsole(level, message));
         }
