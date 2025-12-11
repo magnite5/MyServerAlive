@@ -17,7 +17,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.logging.Level;
@@ -58,7 +61,30 @@ public class StatisticCommand {
     }
 
     public LiteralCommandNode<CommandSourceStack> create() {
-        return Commands.literal("statistic")
+        //TODO:
+        // Switch operation to an argument, for more suggestion display control
+
+        return Commands.literal("stats")
+
+            .executes(this::overviewCommand)
+
+            .then(Commands.literal("help")
+                .executes(this::subCommandHelp))
+
+            .then(Commands.argument("type", StringArgumentType.word())
+                .suggests((context, builder) -> {
+                    CommandSender sender = context.getSource().getSender();
+                    if (sender instanceof Player player) { // Don't show shortcuts to admins
+                        if (player.hasPermission("msd.stats.self") || player.hasPermission("msd.stats.*") ||
+                            player.hasPermission("msd.*")          || player.isOp()) {
+                            return builder.buildFuture();
+                        }
+                    }
+                    for (String stat : VALID_STATISTICS) builder.suggest(stat);
+                    return builder.buildFuture();
+                })
+                .executes(this::subCommand))
+
             // "get" structure
             .then(Commands.literal("get")
                 .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
@@ -184,122 +210,192 @@ public class StatisticCommand {
         return target != null && (target.hasPlayedBefore() || target.isOnline());
     }
 
+    private int overviewCommand(CommandContext<CommandSourceStack> ctx) {
+        CommandSender sender = ctx.getSource().getSender();
+        if (!(sender instanceof Player player)) {
+            Msg.msg("You must be a player to view a statistic overview.", sender);
+            return 1;
+        }
+        List<String> messages = new ArrayList<>(List.of(
+            " <gold>| <u>Statistics Overview<u:false>",
+            " <gold>| <dark_aqua>Stats for <gold>" + player.getName() + "<dark_aqua>: "
+        ));
+        UUID uuid = player.getUniqueId();
+        VALID_STATISTICS.forEach(type -> {
+            try {
+                messages.add(" <dark_aqua>» <yellow>" + type + "<dark_aqua>: <aqua>" + statisticsManager.getStatistic(uuid, type));
+            } catch (SQLException e) {
+                messages.add(" <dark_aqua>» <red>" + type + ": ERROR");
+                Msg.log(Level.SEVERE, "Failed to get a statistic for " + player.getName() + "'s overview:  " + e.getMessage());
+            }
+        });
+        Msg.miniMsg(messages, sender);
+        return 1;
+    }
+
+    private int subCommand(CommandContext<CommandSourceStack> ctx) {
+        CommandSender sender = ctx.getSource().getSender();
+        if (!(sender instanceof Player player)) {
+            Msg.msg("You must be a player to use this command.", sender);
+            return 1;
+        }
+        String type = ctx.getArgument("type", String.class);
+        if (!VALID_STATISTICS.contains(type.toLowerCase())) {
+            player.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
+            return 0;
+        }
+        try {
+            int amount = statisticsManager.getStatistic(player.getUniqueId(), type);
+            Msg.miniMsg("<dark_aqua>You have <aqua>" + amount + " <yellow>" + type + "<dark_aqua>.", player);
+            return 1;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            Msg.miniMsg("An error occurred while retrieving your statistics.", player);
+            return 0;
+        }
+    }
+
+    private int subCommandHelp(CommandContext<CommandSourceStack> ctx) {
+        CommandSender sender = ctx.getSource().getSender();
+        List<String> messages = new ArrayList<>(List.of(
+            " <gold>| <gold><u>Statistics Help Menu<u:false>",
+            " <gold>| <dark_aqua>The statistics command lets you view your statistics.",
+            " <gold>| <dark_aqua>Usage: /<gold>stats <dark_aqua>[<<gold>type<dark_aqua>>]",
+            " <gold>| <dark_aqua>Valid Statistics:"
+        ));
+        VALID_STATISTICS.forEach(type -> messages.add("  <dark_aqua>» <yellow>" + type));
+        if (sender instanceof Player player) {
+            if (player.hasPermission("msd.stats.self") || player.hasPermission("msd.stats.*") ||
+                player.hasPermission("msd.*")          || player.isOp()) {
+                messages.add(" <dark_gray>|");
+                messages.add(" <red>| <u>Admin Info<u:false>: ");
+                messages.add("  <red>» Usage: <dark_aqua>/<gold>stats <dark_aqua><<dark_green>operation<dark_aqua>> " +
+                    "<<gold>target<dark_aqua>> " +
+                    "<<yellow>type<dark_aqua>> " +
+                    "[<<aqua>amount<dark_aqua>>]");
+            }
+        }
+        messages.add("");
+        Msg.miniMsg(messages, sender);
+        return 1;
+    }
+
     private int subCommandGet(CommandContext<CommandSourceStack> ctx) {
-        CommandSender source = ctx.getSource().getSender();
+        CommandSender sender = ctx.getSource().getSender();
         OfflinePlayer target = resolveTarget(ctx);
 
         if (!isTargetValid(target)) {
-            source.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
+            sender.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
             return 0;
         }
 
         String type = ctx.getArgument("type", String.class);
         if (!VALID_STATISTICS.contains(type.toLowerCase())) {
-            source.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
+            sender.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
             return 0;
         }
 
         try {
             int result = statisticsManager.getStatistic(target.getUniqueId(), type);
-            source.sendMessage(mm.deserialize("<gold>" + target.getName() + "<dark_aqua>'s <yellow>" + type + "<dark_aqua>: <aqua>" + result + "<dark_aqua>."));
+            sender.sendMessage(mm.deserialize("<gold>" + target.getName() + "<dark_aqua>'s <yellow>" + type + "<dark_aqua>: <aqua>" + result + "<dark_aqua>."));
             return 1;
         } catch (SQLException e) {
             e.printStackTrace();
-            source.sendMessage(mm.deserialize("<red>An error occurred while retrieving the statistic."));
+            sender.sendMessage(mm.deserialize("<red>An error occurred while retrieving the statistic."));
             return 0;
         }
     }
 
     private int subCommandSet(CommandContext<CommandSourceStack> ctx) {
-        CommandSender source = ctx.getSource().getSender();
+        CommandSender sender = ctx.getSource().getSender();
         OfflinePlayer target = resolveTarget(ctx);
 
         if (!isTargetValid(target)) {
-            source.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
+            sender.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
             return 0;
         }
 
         String type = ctx.getArgument("type", String.class);
         int value = ctx.getArgument("value", Integer.class);
         if (!VALID_STATISTICS.contains(type.toLowerCase())) {
-            source.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
+            sender.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
             return 0;
         }
 
         try {
             int oldValue = statisticsManager.getStatistic(target.getUniqueId(), type);
             statisticsManager.setStatistic(target.getUniqueId(), type, value);
-            source.sendMessage(mm.deserialize("<dark_aqua>Set <gold>" + target.getName() + "<dark_aqua>'s <yellow>" + type + "<dark_aqua> to <aqua>" + value + "<dark_aqua>, formerly <aqua>" + oldValue + "<dark_aqua>."));
+            sender.sendMessage(mm.deserialize("<dark_aqua>Set <gold>" + target.getName() + "<dark_aqua>'s <yellow>" + type + "<dark_aqua> to <aqua>" + value + "<dark_aqua>, formerly <aqua>" + oldValue + "<dark_aqua>."));
             return 1;
         } catch (SQLException e) {
             e.printStackTrace();
-            source.sendMessage(mm.deserialize("<red>An error occurred while changing the statistic."));
+            sender.sendMessage(mm.deserialize("<red>An error occurred while changing the statistic."));
             return 0;
         }
     }
 
     private int subCommandAdd(CommandContext<CommandSourceStack> ctx) {
-        CommandSender source = ctx.getSource().getSender();
+        CommandSender sender = ctx.getSource().getSender();
         OfflinePlayer target = resolveTarget(ctx);
 
         if (!isTargetValid(target)) {
-            source.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
+            sender.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
             return 0;
         }
 
         String type = ctx.getArgument("type", String.class);
         int value = ctx.getArgument("amount", Integer.class);
         if (!VALID_STATISTICS.contains(type.toLowerCase())) {
-            source.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
+            sender.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
             return 0;
         }
 
         try {
             int oldValue = statisticsManager.getStatistic(target.getUniqueId(), type);
             statisticsManager.addToStatistic(target.getUniqueId(), type, value);
-            source.sendMessage(mm.deserialize("<dark_aqua>Set <gold>" + target.getName() + "<dark_aqua>'s <yellow>" + type + "<dark_aqua> to <aqua>" + (oldValue + value) + "<dark_aqua>, formerly <aqua>" + oldValue + "<dark_aqua>."));
+            sender.sendMessage(mm.deserialize("<dark_aqua>Set <gold>" + target.getName() + "<dark_aqua>'s <yellow>" + type + "<dark_aqua> to <aqua>" + (oldValue + value) + "<dark_aqua>, formerly <aqua>" + oldValue + "<dark_aqua>."));
             return 1;
         } catch (SQLException e) {
             e.printStackTrace();
-            source.sendMessage(mm.deserialize("<red>An error occurred while updating the statistic."));
+            sender.sendMessage(mm.deserialize("<red>An error occurred while updating the statistic."));
             return 0;
         }
     }
 
     private int subCommandMultiply(CommandContext<CommandSourceStack> ctx) {
-        CommandSender source = ctx.getSource().getSender();
+        CommandSender sender = ctx.getSource().getSender();
         OfflinePlayer target = resolveTarget(ctx);
 
         if (!isTargetValid(target)) {
-            source.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
+            sender.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
             return 0;
         }
 
         String type = ctx.getArgument("type", String.class);
         int value = ctx.getArgument("multiplier", Integer.class);
         if (!VALID_STATISTICS.contains(type.toLowerCase())) {
-            source.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
+            sender.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
             return 0;
         }
 
         try {
             int oldValue = statisticsManager.getStatistic(target.getUniqueId(), type);
             statisticsManager.multiplyStatistic(target.getUniqueId(), type, value);
-            source.sendMessage(mm.deserialize("<dark_aqua>Set <gold>" + target.getName() + "<dark_aqua>'s <yellow>" + type + "<dark_aqua> to <aqua>" + (oldValue * value) + "<dark_aqua>, formerly <aqua>" + oldValue + "<dark_aqua>."));
+            sender.sendMessage(mm.deserialize("<dark_aqua>Set <gold>" + target.getName() + "<dark_aqua>'s <yellow>" + type + "<dark_aqua> to <aqua>" + (oldValue * value) + "<dark_aqua>, formerly <aqua>" + oldValue + "<dark_aqua>."));
             return 1;
         } catch (SQLException e) {
             e.printStackTrace();
-            source.sendMessage(mm.deserialize("<red>An error occurred while updating the statistic."));
+            sender.sendMessage(mm.deserialize("<red>An error occurred while updating the statistic."));
             return 0;
         }
     }
 
     private int subCommandReset(CommandContext<CommandSourceStack> ctx) {
-        CommandSender source = ctx.getSource().getSender();
+        CommandSender sender = ctx.getSource().getSender();
         OfflinePlayer target = resolveTarget(ctx);
 
         if (!isTargetValid(target)) {
-            source.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
+            sender.sendMessage(mm.deserialize("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class) + "<red>."));
             return 0;
         }
 
@@ -314,16 +410,16 @@ public class StatisticCommand {
                         .append("<dark_aqua>. ");
                 } catch (SQLException e) {
                     e.printStackTrace();
-                    source.sendMessage(mm.deserialize("<red>An error occurred while retrieving statistics."));
+                    sender.sendMessage(mm.deserialize("<red>An error occurred while retrieving statistics."));
                 }
             }
-            source.sendMessage(mm.deserialize("<gold>" + target.getName() + "<dark_aqua>'s former statistics: " + s + "<dark_aqua>."));
-            source.sendMessage(mm.deserialize("<dark_aqua>Resetting all of <gold>" + target.getName() + "<dark_aqua>'s statistics."));
+            sender.sendMessage(mm.deserialize("<gold>" + target.getName() + "<dark_aqua>'s former statistics: " + s + "<dark_aqua>."));
+            sender.sendMessage(mm.deserialize("<dark_aqua>Resetting all of <gold>" + target.getName() + "<dark_aqua>'s statistics."));
             statisticsManager.resetPlayer(target.getUniqueId());
             return 1;
         } catch (SQLException e) {
             e.printStackTrace();
-            source.sendMessage(mm.deserialize("<red>An error occurred while resetting the statistics."));
+            sender.sendMessage(mm.deserialize("<red>An error occurred while resetting the statistics."));
             return 0;
         }
     }

@@ -8,6 +8,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -59,6 +60,9 @@ public class Msg {
     }
     public static void miniMsg(String message, Player target) {
         target.sendMessage(mm.deserialize(message));
+    }
+    public static void miniMsg(List<String> messages, CommandSender target) {
+        messages.forEach(m -> target.sendMessage(mm.deserialize(m)));
     }
     public static void miniMsg(String message, CommandSender target) {
         target.sendMessage(mm.deserialize(message));

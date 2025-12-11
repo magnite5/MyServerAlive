@@ -26,7 +26,6 @@ public final class MSA extends JavaPlugin {
     TODO:
         - NetWorth GUI (formerly /cv)
         - /nw /kills /deaths shortcut commands
-        - /stats summary, /stats help page
         - /rules command
         - /unequip
         - logging big jumps in stats
@@ -77,7 +76,7 @@ public final class MSA extends JavaPlugin {
             commands.registrar().register(testNode);
             commands.registrar().register(particleTestNode);
             commands.registrar().register(toggleNode);
-            StartupUtils.registerCommandWithAliases(commands, statisticNode, "stats", "stat", "st");
+            StartupUtils.registerCommandWithAliases(commands, statisticNode, "statistic", "stat", "st");
             StartupUtils.registerCommandWithAliases(commands, leaderboardNode, "lb", "top");
             StartupUtils.registerCommandWithAliases(commands, titleNode, "tt", "ranks", "labels");
         });

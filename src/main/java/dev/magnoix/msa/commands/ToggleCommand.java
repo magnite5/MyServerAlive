@@ -32,7 +32,10 @@ public class ToggleCommand {
 
     public ToggleCommand(PluginConfig config) {
         this.config = config;
-        this.toggleableEnchants = config.getStringList("toggleable-enchants");
+        toggleableEnchants = config.getStringList("toggleable-enchants");
+        toggleableEnchants.forEach(enchant -> {
+            enchant.toLowerCase().replaceAll(" ", "_");
+        });
     }
 
     public SuggestionProvider<CommandSourceStack> toggleableEnchantSuggestions(ItemStack item) {
@@ -64,17 +67,36 @@ public class ToggleCommand {
                 .suggests((ctx, builder) -> {
                     CommandSender sender = ctx.getSource().getSender();
                     if (!(sender instanceof Player player)) return CompletableFuture.completedFuture(builder.build());
-                    ItemStack item = player.getInventory().getItemInMainHand();
                     return toggleableEnchantSuggestions(player.getInventory().getItemInMainHand()).getSuggestions(ctx, builder);
                 })
+                .then(Commands.literal("help")
+                    .executes(ctx -> {
+                        CommandSender sender = ctx.getSource().getSender();
+                        List<String> messages = new ArrayList<>(List.of(
+                            " <gold>| <dark_aqua><u>Toggle Help Menu<u:false>",
+                            " <gold>| <dark_aqua>Toggle an enchantment on the item in your main hand.",
+                            " <gold>| <dark_aqua>Only enabled enchantments can be toggled.",
+                            " <gold>| <dark_aqua>Allowed Enchantments:"
+                        ));
+                        for (String enchant : toggleableEnchants) {
+                            messages.add(" <dark_aqua>└ <gold>" + enchant);
+                        }
+                        Msg.miniMsg(messages, sender);
+                        return 1;
+                    }))
                 .executes(ctx -> {
                     CommandSender sender = ctx.getSource().getSender();
                     if (!(sender instanceof Player player)) {
                         Msg.msg("You must be a player to use this command.", sender);
                         return 1;
                     }
-                    ItemStack item = player.getInventory().getItemInMainHand();
                     String enchant = ctx.getArgument("enchant", String.class);
+
+                    if (!toggleableEnchants.contains(enchant.toLowerCase().replaceAll(" ", "_"))) {
+                        Msg.miniMsg("<red>The specified enchant is not valid. Please ensure that the enchantment can be toggled.", sender);
+                        return 1;
+                    }
+                    ItemStack item = player.getInventory().getItemInMainHand();
                     if (toggleEnchant(item, enchant)) {
                         Msg.miniMsg("<dark_aqua>Successfully toggled the <gold>" + enchant + " <dark_aqua>enchantment.", sender);
                     } else {
@@ -117,14 +139,14 @@ public class ToggleCommand {
         ItemMeta meta = itemStack.getItemMeta();
         if (meta != null && meta.lore() != null) {
             for (Component component : meta.lore()) {
-                String plain = TextUtils.getPlainText(component);
+                String raw = TextUtils.getPlainText(component);
 
                 for (String name : toggleableEnchants) {
-                    String pretty = name.replace("_", " ");
-                    if (plain.toLowerCase().startsWith(pretty.toLowerCase())) {
+                    String formatted = name.replace("_", " ");
+                    if (raw.toLowerCase().startsWith(formatted.toLowerCase())) {
                         Enchantment e = getEnchantFromName(name);
                         if (e != null) {
-                            Matcher matcher = Pattern.compile("([IVXLCDM]+)$").matcher(plain);
+                            Matcher matcher = Pattern.compile("([IVXLCDM]+)$").matcher(raw);
                             int level = matcher.find() ? TextUtils.parseRomanNumerals(matcher.group(1)) : 1;
                             toggleableItemEnchants.put(e, level);
                         }
