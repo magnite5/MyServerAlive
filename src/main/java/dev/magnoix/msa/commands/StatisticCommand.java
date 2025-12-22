@@ -1,8 +1,12 @@
 package dev.magnoix.msa.commands;
 
+import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandExceptionType;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
@@ -10,6 +14,7 @@ import dev.magnoix.msa.databases.StatisticsManager;
 import dev.magnoix.msa.messages.Msg;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -17,10 +22,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.logging.Level;
@@ -29,6 +31,10 @@ public class StatisticCommand {
     private final StatisticsManager statisticsManager;
     private final Set<String> VALID_STATISTICS;
     private final MiniMessage mm = MiniMessage.miniMessage();
+
+    private static final List<String> SUB_COMMANDS = new ArrayList<>(List.of(
+        "get", "add", "set", "multiply", "reset"
+    )); // List of subcommands. Does not include "help", as it is always available
 
     public StatisticCommand(StatisticsManager statisticsManager) {
         this.statisticsManager = statisticsManager;
@@ -79,37 +85,40 @@ public class StatisticCommand {
                             player.hasPermission("msd.*")          || player.isOp()) {
                             return builder.buildFuture();
                         }
+                    } else {
+                        return builder.buildFuture();
                     }
                     for (String stat : VALID_STATISTICS) builder.suggest(stat);
                     return builder.buildFuture();
                 })
                 .executes(this::subCommand))
 
-            // "get" structure
-            .then(Commands.literal("get")
-                .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
-                .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
-                    .then(Commands.argument("type", StringArgumentType.word())
-                        .suggests((context, builder) -> {
-                            for (String stat : VALID_STATISTICS) builder.suggest(stat);
-                            return builder.buildFuture();
-                        })
-                        .executes(this::subCommandGet))))
-            .then(Commands.literal("?")
-                .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
-                .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
-                    .then(Commands.argument("type", StringArgumentType.word())
-                        .suggests((context, builder) -> {
-                            for (String stat : VALID_STATISTICS) builder.suggest(stat);
-                            return builder.buildFuture();
-                        })
-                        .executes(this::subCommandGet))))
+            .then(Commands.argument("operation", StringArgumentType.word())
+                .suggests((context, builder) -> {
+                    CommandSender sender = context.getSource().getSender();
+                    if (sender.hasPermission("msa.*") || sender.hasPermission("msa.stats.*")) {
+                        SUB_COMMANDS.forEach(builder::suggest);
+                        return builder.buildFuture();
+                    }
+                    SUB_COMMANDS.forEach(subCommand -> {
+                        if (sender.hasPermission("msa.stats." + subCommand)) {
+                            builder.suggest(subCommand);
+                        }
+                    });
 
-            // "set" structure
-            .then(Commands.literal("set")
-                .requires(requirePermission("msd.stats.set", "msd.stats.*", "msd.*"))
+                    if (sender instanceof Player player) { // Don't show shortcuts to admins
+                        if (player.hasPermission("msd.stats.self") || player.hasPermission("msd.stats.*") ||
+                            player.hasPermission("msd.*")          || player.isOp()) {
+                            return builder.buildFuture();
+                        }
+                    } else {
+                        return builder.buildFuture();
+                    }
+                    for (String stat : VALID_STATISTICS) builder.suggest(stat);
+
+                    return builder.buildFuture();
+                })
+                .executes(this::subCommand)
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(onlinePlayerSuggestions())
                     .then(Commands.argument("type", StringArgumentType.word())
@@ -117,81 +126,14 @@ public class StatisticCommand {
                             for (String stat : VALID_STATISTICS) builder.suggest(stat);
                             return builder.buildFuture();
                         })
+                        .executes(this::subCommandGet)
                         .then(Commands.argument("value", IntegerArgumentType.integer())
-                            .executes(this::subCommandSet)))))
-            .then(Commands.literal("=")
-                .requires(requirePermission("msd.stats.set", "msd.stats.*", "msd.*"))
-                .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
-                    .then(Commands.argument("type", StringArgumentType.word())
-                        .suggests((context, builder) -> {
-                            for (String stat : VALID_STATISTICS) builder.suggest(stat);
-                            return builder.buildFuture();
-                        })
-                        .then(Commands.argument("value", IntegerArgumentType.integer())
-                            .executes(this::subCommandSet)))))
-
-            // "add" structure
-            .then(Commands.literal("add")
-                .requires(requirePermission("msd.stats.add", "msd.stats.*", "msd.*"))
-                .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
-                    .then(Commands.argument("type", StringArgumentType.word())
-                        .suggests((context, builder) -> {
-                            for (String stat : VALID_STATISTICS) builder.suggest(stat);
-                            return builder.buildFuture();
-                        })
-                        .then(Commands.argument("amount", IntegerArgumentType.integer())
-                            .executes(this::subCommandAdd)))))
-            .then(Commands.literal("+")
-                .requires(requirePermission("msd.stats.add", "msd.stats.*", "msd.*"))
-                .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
-                    .then(Commands.argument("type", StringArgumentType.word())
-                        .suggests((context, builder) -> {
-                            for (String stat : VALID_STATISTICS) builder.suggest(stat);
-                            return builder.buildFuture();
-                        })
-                        .then(Commands.argument("amount", IntegerArgumentType.integer())
-                            .executes(this::subCommandAdd)))))
-
-            // "multiply" structure
-            .then(Commands.literal("multiply")
-                .requires(requirePermission("msd.stats.multiply", "msd.stats.*", "msd.*"))
-                .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
-                    .then(Commands.argument("type", StringArgumentType.word())
-                        .suggests((context, builder) -> {
-                            for (String stat : VALID_STATISTICS) builder.suggest(stat);
-                            return builder.buildFuture();
-                        })
-                        .then(Commands.argument("multiplier", IntegerArgumentType.integer())
-                            .executes(this::subCommandMultiply)))))
-            .then(Commands.literal("*")
-                .requires(requirePermission("msd.stats.multiply", "msd.stats.*", "msd.*"))
-                .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
-                    .then(Commands.argument("type", StringArgumentType.word())
-                        .suggests((context, builder) -> {
-                            for (String stat : VALID_STATISTICS) builder.suggest(stat);
-                            return builder.buildFuture();
-                        })
-                        .then(Commands.argument("multiplier", IntegerArgumentType.integer())
-                            .executes(this::subCommandMultiply)))))
-
-            // "reset"
-            .then(Commands.literal("reset")
-                .requires(requirePermission("msd.stats.reset", "msd.stats.*", "msd.*"))
-                .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
-                    .executes(this::subCommandReset)))
-            .then(Commands.literal("//")
-                .requires(requirePermission("msd.stats.reset", "msd.stats.*", "msd.*"))
-                .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
-                    .executes(this::subCommandReset)))
+                            .executes(this::evaluateModification)))))
             .build();
     }
+
+    private static final DynamicCommandExceptionType INVALID_STATISTIC =
+        new DynamicCommandExceptionType(input -> new LiteralMessage("Invalid statistic name: " + input));
 
     /**
      * Resolve an OfflinePlayer target from a Command Context's "target" argument
@@ -208,6 +150,32 @@ public class StatisticCommand {
 
     private boolean isTargetValid(OfflinePlayer target) {
         return target != null && (target.hasPlayedBefore() || target.isOnline());
+    }
+
+    private int evaluateModification(CommandContext<CommandSourceStack> ctx) {
+        switch (ctx.getArgument("operation", String.class).toLowerCase()) {
+            case "set":
+            case "=": subCommandSet(ctx);
+            break;
+
+            case "add":
+            case "+": subCommandAdd(ctx);
+            break;
+
+            case "multiply":
+            case "*": subCommandMultiply(ctx);
+            break;
+
+            case "reset":
+            case "//": subCommandReset(ctx);
+            break;
+
+            default: {
+                CommandSender sender = ctx.getSource().getSender();
+                sender.sendMessage(mm.deserialize("<red>Invalid Operation or Type."));
+            }
+        }
+        return 1;
     }
 
     private int overviewCommand(CommandContext<CommandSourceStack> ctx) {
@@ -233,16 +201,16 @@ public class StatisticCommand {
         return 1;
     }
 
-    private int subCommand(CommandContext<CommandSourceStack> ctx) {
+    private int subCommand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        String type = ctx.getArgument("type", String.class).toLowerCase();
+        if (!VALID_STATISTICS.contains(type)) {
+            // Switch to checking for <operation> argument if invalid
+            throw INVALID_STATISTIC.create(type);
+        }
         CommandSender sender = ctx.getSource().getSender();
         if (!(sender instanceof Player player)) {
             Msg.msg("You must be a player to use this command.", sender);
             return 1;
-        }
-        String type = ctx.getArgument("type", String.class);
-        if (!VALID_STATISTICS.contains(type.toLowerCase())) {
-            player.sendMessage(mm.deserialize("<red>Invalid Statistic Type \"<yellow>" + type + "<red>\"."));
-            return 0;
         }
         try {
             int amount = statisticsManager.getStatistic(player.getUniqueId(), type);

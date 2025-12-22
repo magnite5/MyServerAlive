@@ -44,13 +44,13 @@ public class Menu {
     public void Open(Player p) {
         p.openInventory(inventory);
         openMenus.put(p.getUniqueId(), this);
-        if(viewerID != null) addViewer(p);
-        if(openAction != null) openAction.open(p);
+        if (viewerID != null) addViewer(p);
+        if (openAction != null) openAction.open(p);
     }
 
     public void remove() {
         openMenus.entrySet().removeIf(entry -> {
-            if(entry.getValue().getUuid().equals(uuid)) {
+            if (entry.getValue().getUuid().equals(uuid)) {
                 Player p = Bukkit.getPlayer(entry.getKey());
                 if (p != null) {
                     if (viewerID != null) removeViewer(p);
@@ -76,7 +76,7 @@ public class Menu {
 
 
     private void addViewer(Player p) {
-        if(viewerID == null) return;
+        if (viewerID == null) return;
         Set<UUID> list = viewers.getOrDefault(viewerID, new HashSet<>());
         list.add(p.getUniqueId());
         viewers.put(viewerID, list);
@@ -94,7 +94,7 @@ public class Menu {
     public Set<Player> getViewers() {
         if (viewerID == null) return new HashSet<>();
         Set<Player> viewerList = new HashSet<>();
-        for(UUID uuid : viewers.getOrDefault(viewerID, new HashSet<>())) {
+        for (UUID uuid : viewers.getOrDefault(viewerID, new HashSet<>())) {
             Player p = Bukkit.getPlayer(uuid);
             if (p == null) continue;
             viewerList.add(p);
@@ -132,13 +132,18 @@ public class Menu {
     }
 
     public void setBackground(ItemStack item) {
-        for(int i = 0; i < inventory.getSize(); i++) {
-            if(inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) inventory.setItem(i, item);
+        for (int i = 0; i < inventory.getSize(); i++) {
+            if (inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) inventory.setItem(i, item);
         }
     }
     public void setRow(int row, ItemStack item) {
-        for(int i = 0; i < inventory.getSize(); i++) {
-            if(i % 9 == row && (inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) ) inventory.setItem(i, item);
+        for (int i = 0; i < inventory.getSize(); i++) {
+            if (i % 9 == row && (inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) ) inventory.setItem(i, item);
+        }
+    }
+    public void setColumn (int column, ItemStack item) {
+        for (int i = column; i < inventory.getSize(); i += 9) {
+            inventory.setItem(i, item);
         }
     }
 }

@@ -29,6 +29,8 @@ public final class MSA extends JavaPlugin {
         - /rules command
         - /unequip
         - logging big jumps in stats
+        - implement config-based permission prefix
+        - PAPI Support
      */
 
     private PluginDatabase pluginDatabase;

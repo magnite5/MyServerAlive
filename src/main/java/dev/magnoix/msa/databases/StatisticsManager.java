@@ -3,7 +3,6 @@ package dev.magnoix.msa.databases;
 import dev.magnoix.msa.logging.FileLogger;
 import dev.magnoix.msa.messages.Msg;
 import org.bukkit.Bukkit;
-import org.bukkit.plugin.PluginLogger;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.*;
@@ -359,5 +358,13 @@ public class StatisticsManager {
     /// LOGGING
     public FileLogger getLogger() {
         return statsLogger;
+    }
+
+    public void logIfLogged(String type, String message) {
+        if (loggedTypes.contains(type))
+            statsLogger.log(message);
+    }
+    public void log(String message) {
+        statsLogger.log(message);
     }
 }
