@@ -34,6 +34,7 @@ public record PlayerEvents(StatisticsManager statisticsManager, TitleManager tit
     @EventHandler
     public void playerJoin(PlayerJoinEvent event) {
         titleManager.handlePlayerJoin(event, plugin);
+
         Player player =  event.getPlayer();
         if (!player.hasPlayedBefore()) {
             try {

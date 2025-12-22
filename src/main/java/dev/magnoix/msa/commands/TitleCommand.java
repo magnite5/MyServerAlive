@@ -158,7 +158,7 @@ public class TitleCommand {
                             sender.sendMessage("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class));
                             return 0;
                         } try {
-                            titleManager.syncLuckPermsPrefix(target.getUniqueId());
+                            titleManager.syncLuckPermsPrefixAsync(target.getUniqueId());
                             Msg.miniMsg("<dark_aqua>Synced <gold>" + target.getName() + "<dark_aqua>'s <yellow>LuckPerms Prefix <dark_aqua>with their <yellow>Active Title.", sender);
                             return 1;
                         } catch (Exception e) {
