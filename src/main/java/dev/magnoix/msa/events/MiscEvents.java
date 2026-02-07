@@ -1,22 +1,14 @@
 package dev.magnoix.msa.events;
 
 import dev.magnoix.msa.menus.Menu;
-import dev.magnoix.msa.menus.TestMenu;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
-import org.bukkit.event.player.PlayerToggleSneakEvent;
 
 public class MiscEvents implements Listener {
-    @EventHandler
-    private void playerToggleSneak(PlayerToggleSneakEvent event) {
-        if (!event.isSneaking()) return;
-        new TestMenu().Open(event.getPlayer());
-    }
-
     @EventHandler
     private void inventoryDrag(InventoryDragEvent event) {
         Player p = (Player) event.getWhoClicked();

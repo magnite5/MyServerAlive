@@ -43,6 +43,14 @@ public class ItemCreator {
         item.setItemMeta(itemMeta);
         return item;
     }
+    public static ItemStack create(Material material, Component name, boolean isGlowing) {
+        ItemStack item = create(material, name);
+        ItemMeta itemMeta = item.getItemMeta();
+        if (itemMeta == null) return item;
+        itemMeta.setEnchantmentGlintOverride(isGlowing);
+        item.setItemMeta(itemMeta);
+        return item;
+    }
 
     public static ItemStack updateMaterial(Material newMaterial, ItemStack oldItem) {
         ItemMeta itemMeta = oldItem.getItemMeta();

@@ -22,6 +22,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ConversionMenu {
+    //TODO: Make all operation items have type metadata
     private final JavaPlugin plugin;
     private final Logger logger;
 
@@ -42,12 +43,13 @@ public class ConversionMenu {
 
     public void open(Player player) {
         UUID uuid = player.getUniqueId();
+        int nw = 0;
         try {
-            int nw = statisticsManager.getStatistic(uuid, "networth");
+            nw = statisticsManager.getStatistic(uuid, "networth");
         } catch (SQLException e) {
             Msg.miniMsg("An error occurred while retrieving your networth.", player);
         }
-        Menu menu = new Menu(6, Component.text("Networth Conversion Menu"));
+        Menu menu = new Menu(54, Component.text("Networth Conversion Menu"));
         // Divider Items
         for (int i = 0; i < 4; i++) {
             menu.setColumn(i, greenBackgroundItem());
@@ -57,9 +59,52 @@ public class ConversionMenu {
         menu.setRow(0, borderItem());
         menu.setRow(8, borderItem());
         // Display Items
-        menu.setItem(4, ItemCreator.create())
+        menu.setItem(4, playerSkullItem(player, nw));
 
         // Interaction Items
+        menu.setItem(0, depositAllItem(player), (p, e) -> { // TODO: Reduce repeated operations
+            depositAll(p);
+        });
+        menu.setItem(53, closeButton(), (p, e) -> {
+            p.closeInventory();
+        });
+        // Deposit
+        menu.setItem(19, depositItem(64, "KELP", Material.DRIED_KELP_BLOCK, false), (p, e) -> {
+            if (e.getClick().isLeftClick()) depositItems(p, "KELP", 1);
+            else depositItems(p, "KELP", 64);
+            
+        });
+        menu.setItem(20, depositItem(64, "COMPRESSED_KELP", Material.DRIED_KELP_BLOCK, true), (p, e) -> {
+            if (e.getClick().isLeftClick()) depositItems(p, "COMPRESSED_KELP", 1);
+            else depositItems(p, "COMPRESSED_KELP", 64);
+        });
+        menu.setItem(28, depositItem(64, "PICKLE", Material.SEA_PICKLE, false), (p, e) -> {
+            if (e.getClick().isLeftClick()) depositItems(p, "PICKLE", 1);
+            else depositItems(p, "PICKLE", 64);
+        });
+        menu.setItem(29, depositItem(64, "COMPRESSED_PICKLE", Material.SEA_PICKLE, true), (p, e) -> {
+            if (e.getClick().isLeftClick()) depositItems(p, "COMPRESSED_PICKLE", 1);
+            else depositItems(p, "COMPRESSED_PICKLE", 64);
+        });
+        // Withdraw
+        menu.setItem(24, withdrawItem(64, "KELP", Material.DRIED_KELP_BLOCK, false), (p, e) -> {
+            if (e.getClick().isLeftClick()) withdrawItems(p, "KELP", 1);
+            else withdrawItems(p, "KELP", 64);
+        });
+        menu.setItem(25, withdrawItem(64, "COMPRESSED_KELP", Material.DRIED_KELP_BLOCK, true), (p, e) -> {
+            if (e.getClick().isLeftClick()) withdrawItems(p, "COMPRESSED_KELP", 1);
+            else withdrawItems(p, "COMPRESSED_KELP", 64);
+        });
+        menu.setItem(33, withdrawItem(64, "PICKLE", Material.SEA_PICKLE, false), (p, e) -> {
+            if (e.getClick().isLeftClick()) withdrawItems(p, "PICKLE", 1);
+            else withdrawItems(p, "PICKLE", 64);
+        });
+        menu.setItem(34, withdrawItem(64, "COMPRESSED_PICKLE", Material.SEA_PICKLE, true), (p, e) -> {
+            if (e.getClick().isLeftClick()) withdrawItems(p, "COMPRESSED_PICKLE", 1);
+            else withdrawItems(p, "COMPRESSED_PICKLE", 64);
+        });
+
+        menu.Open(player);
     }
 
     private NamespacedKey getNamespacedKey(String type) {
@@ -76,12 +121,24 @@ public class ConversionMenu {
 
         return meta.getPersistentDataContainer().get(ITEM_TYPE_KEY, PersistentDataType.STRING);
     }
+    private int getItemValue(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) return 0;
+        
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return 0;
+        
+        return getTypeValue(meta.getPersistentDataContainer().get(ITEM_TYPE_KEY, PersistentDataType.STRING)) * item.getAmount();
+    }
+    
     private int countItems(Player player, String type) {
+        if (type == null) return 0;
+
         int count = 0;
         for (ItemStack item : player.getInventory().getContents()) {
             if (item == null || item.getType() == Material.AIR) continue;
-            String itemType = item.getItemMeta().getPersistentDataContainer().get(ITEM_TYPE_KEY, PersistentDataType.STRING);
-            if (type.equalsIgnoreCase(itemType)) {
+
+            String itemType = getItemType(item);
+            if (itemType != null && type.equalsIgnoreCase(itemType)) {
                 count += item.getAmount();
             }
         }
@@ -122,10 +179,12 @@ public class ConversionMenu {
             if (remaining == 0) break;
         }
         // NW Logic
-        int profit = getTypeValue(type) * count;
+        int profit = getTypeValue(type) * amount;
         try {
-            int newBalance = statisticsManager.addToStatistic(uuid, "networth", profit);
-            Msg.miniMsg("<dark_aqua>- <aqua>" + count + "<dark_aqua> Item " + (count == 1 ? " " : "s ") +
+            int oldBalance = statisticsManager.addToStatistic(uuid, "networth", profit);
+            int newBalance = oldBalance + profit;
+
+            Msg.miniMsg("<dark_aqua>- <aqua>" + amount + "<dark_aqua> Item " + (amount == 1 ? " " : "s ") +
                 "; + <aqua>" + profit + "<dark_aqua>NW" +
                 "; New Balance: <aqua>" + newBalance + "<dark_aqua>.", player);
             return newBalance;
@@ -134,10 +193,32 @@ public class ConversionMenu {
             modifiedStacks.forEach((index, itemStack) -> player.getInventory().setItem(index, itemStack));
 
             Msg.miniMsg("<red>An error occurred while updating your networth. Your items have been returned.", player);
-            statisticsManager.logIfLogged("networth", "Failed a " + count + " " + type + " deposit for " + player.getName() + ", worth " + profit);
+            statisticsManager.logIfLogged("networth", "Failed a " + amount + " " + type + " deposit for " + player.getName() + ", worth " + profit);
             Msg.log(Level.SEVERE, "Failed NW deposit for " + player.getName() + ": " + e.getMessage());
             return 0;
         }
+    }
+
+    /**
+     * Read the total value of all valuable items in a target player's inventory
+     * @param player Player whose inventory to read
+     * @return An int array with the total value and number of items counted
+     */
+    public int[] getInventoryValue(Player player) {
+        UUID uuid = player.getUniqueId();
+        int value = 0; // total inventory value
+        int count = 0; // # of valued items
+        
+        ItemStack[] contents = player.getInventory().getContents();
+        for (ItemStack content : contents) {
+            int itemValue = getItemValue(content);
+            if (itemValue != 0) {
+                value += itemValue;
+                count++;
+            }
+        }
+
+        return new int[]{value, count};
     }
 
     public int depositAll(Player player) {
@@ -152,8 +233,9 @@ public class ConversionMenu {
 
         for (int i = 0; i < contents.length; i++) {
             ItemStack item = contents[i];
-            String itemType = getItemType(item);
+            if (item == null || item.getType() == Material.AIR) continue;
 
+            String itemType = getItemType(item);
             int typeValue = getTypeValue(itemType);
             if (typeValue > 0) {
                 int amount = item.getAmount();
@@ -252,11 +334,13 @@ public class ConversionMenu {
         int canAfford = nw / typeValue;
         if (canAfford <= 0) {
             Msg.miniMsg("<dark_aqua>You cannot afford any " + getTypeDisplay(type, 2) + ".", player);
+            return 0;
         }
         // Calculate # of items that can fit in player's inventory
         int canFit = getFreeSpace(player, type);
         if (canFit <= 0) {
             Msg.miniMsg("<dark_aqua>Your inventory is full. Please make some space.", player);
+            return 0;
         }
         // Withdraw bottleneck amount, return new balance
         int max = Math.min(canAfford, canFit);
@@ -264,10 +348,12 @@ public class ConversionMenu {
     }
 
     private int getTypeValue(String type) {
+        if (type == null) return 0;
         return switch (type.toUpperCase()) {
             case "KELP" -> 1024;
             case "PICKLE" -> 2048;
-            case "CREDIT", "COMPRESSED_KELP" -> 4096;
+            case "COMPRESSED_KELP" -> 4096;
+            case "COMPRESSED_PICKLE" -> 8192;
             default -> 0;
         };
     }
@@ -280,14 +366,19 @@ public class ConversionMenu {
     }
 
     private int getFreeSpace(Player player, String type) {
+        if (type == null) return 0;
+
         int count = 0;
         ItemStack[] contents = player.getInventory().getContents();
 
         for (ItemStack item : contents) {
-            if (item.getType().equals(Material.AIR)) {
+            if (item == null || item.getType() == Material.AIR) {
                 count += 64;
+                continue;
             }
-            if (getItemType(item).equals(type)) {
+
+            String itemType = getItemType(item);
+            if (itemType != null && type.equalsIgnoreCase(itemType)) {
                 count += item.getMaxStackSize() - item.getAmount();
             }
         }
@@ -298,14 +389,12 @@ public class ConversionMenu {
         ItemStack item = switch (type.toUpperCase()) {
             case "COMPRESSED_KELP" -> ItemCreator.create(
                 Material.DRIED_KELP_BLOCK,
-                mm.deserialize("<green>Compressed Kelp"),
-                List.of(),
+                mm.deserialize("<#4F4E2E>Compressed Kelp"),
                 true);
             case "PICKLE" -> ItemCreator.create(Material.SEA_PICKLE);
-            case "CREDIT" -> ItemCreator.create(
-                Material.AMETHYST_BLOCK,
-                mm.deserialize("<gold>Credit"),
-                List.of(),
+            case "COMPRESSED_PICKLE" -> ItemCreator.create(
+                Material.SEA_PICKLE,
+                mm.deserialize("<#4B4F1F>Compressed Pickle"),
                 true);
             default -> ItemCreator.create(Material.DRIED_KELP_BLOCK);
         };
@@ -328,6 +417,39 @@ public class ConversionMenu {
         ));
     }
 
+    private ItemStack depositAllItem(Player player) {
+        int totalNw = 0;
+        int totalItems = 0;
+
+        ItemStack[] contents = player.getInventory().getContents();
+        for (ItemStack item : contents) {
+            if (item == null || item.getType() == Material.AIR) continue;
+
+            int itemValue = getItemValue(item);
+            if (itemValue <= 0) continue;
+
+            totalNw += itemValue;
+            totalItems += item.getAmount();
+        }
+
+        List<Component> lore = new ArrayList<>();
+        lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Click: Deposit <aqua>ALL"));
+
+        if (totalItems > 0 && totalNw > 0) {
+            lore.add(mm.deserialize(" <gold>└ <aqua>" + totalItems + " <dark_aqua>Item" + (totalItems == 1 ? "" : "s")
+                + " <dark_aqua>for <aqua>" + totalNw + " <dark_aqua>NW"));
+        } else {
+            lore.add(mm.deserialize(" <gold>└ <red>No valued items found"));
+        }
+
+        return ItemCreator.create(
+            Material.GLOBE_BANNER_PATTERN,
+            mm.deserialize("<red><b>DEPOSIT ALL</b><gold>| Inventory"),
+            lore,
+            totalNw > 0
+        );
+    }
+
     private ItemStack depositItem(int maxAmount, String type, Material material, boolean isGlowing) {
         String typeDisplay = getTypeDisplay(type);
         int typeValue = getTypeValue(type);
@@ -344,7 +466,11 @@ public class ConversionMenu {
         lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Shift + Left Click: Deposit <aqua>ALL"));
         lore.add(mm.deserialize(" <gold>└ <aqua>" + maxAmount + " For <aqua>" + (typeValue * maxAmount)));
 
-        return ItemCreator.create(material, mm.deserialize("<red><b>DEPOSIT </b><gold>| " + typeDisplay), lore, isGlowing);
+        ItemStack item = ItemCreator.create(material, mm.deserialize("<red><b>DEPOSIT </b><gold>| " + typeDisplay), lore, isGlowing);
+        ItemMeta meta = item.getItemMeta();
+        meta.getPersistentDataContainer().set(ITEM_TYPE_KEY, PersistentDataType.STRING, type.toUpperCase());
+        item.setItemMeta(meta);
+        return item;
     }
     private ItemStack withdrawItem(int maxAmount, String type, Material material, boolean isGlowing) {
         String typeDisplay = getTypeDisplay(type);
@@ -362,6 +488,10 @@ public class ConversionMenu {
         lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Shift + Left Click: Withdraw <aqua>ALL"));
         lore.add(mm.deserialize(" <gold>└ <aqua>" + maxAmount + " For <aqua>" + (typeValue * maxAmount)));
 
-        return ItemCreator.create(material, mm.deserialize("<red><b>WITHDRAW </b><gold>| " + typeDisplay), lore, isGlowing);
+        ItemStack item = ItemCreator.create(material, mm.deserialize("<red><b>WITHDRAW </b><gold>| " + typeDisplay), lore, isGlowing);
+        ItemMeta meta = item.getItemMeta();
+        meta.getPersistentDataContainer().set(ITEM_TYPE_KEY, PersistentDataType.STRING, type.toUpperCase());
+        item.setItemMeta(meta);
+        return item;
     }
 }
