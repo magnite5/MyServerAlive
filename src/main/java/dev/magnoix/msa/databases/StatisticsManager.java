@@ -44,14 +44,15 @@ public class StatisticsManager {
 
     /**
      * Updates & Returns the list of valid statistic types. Should only be called on plugin startup.
-     * @param pluginConfig The Plugin's Configuration manager
+     * @param plugin The JavaPlugin instance.
      * @return The updated set of type names.
      */
-    public Set<String> updateStatisticTypes(PluginConfig pluginConfig) {
+    public Set<String> updateStatisticTypes(JavaPlugin plugin) {
         List<String> builtInTypes = List.of("kills", "deaths", "networth");
         Set<String> types = new HashSet<>(builtInTypes);
-        pluginConfig.getStringList("statistics.custom-types").forEach(s ->
-            types.add(s.trim().toLowerCase().replaceAll(" ", "_")));
+        plugin.getConfig().getStringList("statistics.custom-types").forEach(s ->
+                types.add(s.trim().toLowerCase().replaceAll(" ", "_")));
+
         loggedTypes.forEach(type -> {
             if (!types.contains(type)) loggedTypes.remove(type);
         });

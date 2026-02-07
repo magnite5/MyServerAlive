@@ -5,7 +5,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import dev.magnoix.msa.databases.PluginConfig;
 import dev.magnoix.msa.messages.Msg;
 import dev.magnoix.msa.utils.TextUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -16,10 +15,12 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -27,15 +28,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ToggleCommand {
-    private final PluginConfig config;
+    private final JavaPlugin plugin;
+    private final FileConfiguration config;
     private List<String> toggleableEnchants;
 
-    public ToggleCommand(PluginConfig config) {
-        this.config = config;
-        toggleableEnchants = config.getStringList("toggleable-enchants");
-        toggleableEnchants.forEach(enchant -> {
-            enchant.toLowerCase().replaceAll(" ", "_");
-        });
+    public ToggleCommand(JavaPlugin plugin) {
+        this.plugin = plugin;
+        this.config = plugin.getConfig();
+
+        this.toggleableEnchants = new ArrayList<>();
+        for (String s : config.getStringList("toggleable-enchants")) {
+            this.toggleableEnchants.add(s.toLowerCase().replace(" ", "_"));
+        }
     }
 
     public SuggestionProvider<CommandSourceStack> toggleableEnchantSuggestions(ItemStack item) {
@@ -109,13 +113,20 @@ public class ToggleCommand {
 
     // Enchant-Specific Helper Methods
     public void setToggleableEnchants(List<String> enchants) {
-        config.setValues("toggleable-enchants", enchants);
+        // Update the config with the updated list
+        config.set("toggleable-enchants", enchants);
         this.toggleableEnchants = enchants;
+        // Write changes
+        plugin.saveConfig();
     }
     public void addToggleableEnchant(String enchant) {
-        config.addValue("toggleable-enchants", enchant);
-        if (!this.toggleableEnchants.contains(enchant)) {
+        // Get the current list
+        if (!toggleableEnchants.contains(enchant)) {
             toggleableEnchants.add(enchant);
+            // Update the config with the updated list
+            config.set("toggleable-enchants", toggleableEnchants);
+            // Write changes
+            plugin.saveConfig();
         }
     }
 
@@ -168,47 +179,57 @@ public class ToggleCommand {
         Enchantment enchant = getEnchantFromName(enchantName.toLowerCase(Locale.ROOT));
         if (enchant == null) return false;
 
-        int level = item.getEnchantmentLevel(enchant);
         List<Component> lore = meta.lore() != null ? new ArrayList<>(meta.lore()) : new ArrayList<>();
 
-        // if enchant is active -> disable it
+        // CASE 1: Enchant is active -> Disable it
         if (item.containsEnchantment(enchant)) {
+            int level = item.getEnchantmentLevel(enchant);
+
+            // Remove the enchantment
             meta.removeEnchant(enchant);
-            Component disabled = Component.text(
-                TextUtils.capitalize(enchant.getKey().getKey().replace("_", " ")) + " " + TextUtils.toRomanNumerals(level),
-                NamedTextColor.GRAY,
-                TextDecoration.STRIKETHROUGH
+
+            // Add the "disabled" visual to lore
+            Component disabledLore = Component.text(
+                    TextUtils.capitalize(enchant.getKey().getKey().replace("_", " ")) + " " + TextUtils.toRomanNumerals(level),
+                    NamedTextColor.GRAY,
+                    TextDecoration.STRIKETHROUGH
             );
-            lore.add(0, disabled);
+            lore.addFirst(disabledLore);
+
             meta.lore(lore);
             item.setItemMeta(meta);
             return true;
-        } else {
-            Msg.log("Tried to remove an enchantment that wasn't active.");
         }
 
-        // if enchant is disabled -> re-enable it
-        Iterator<Component> it = lore.iterator();
-        while (it.hasNext()) {
-            Component component = it.next();
-            String plain = TextUtils.getPlainText(component);
-            String pretty = enchant.getKey().getKey().replace("_", " ");
-            if (plain.toLowerCase().startsWith(pretty.toLowerCase())) {
-                it.remove();
-                int storedLevel = 1;
-                Matcher romanMatcher = Pattern.compile("([IVXLCDM]+)$").matcher(plain);
-                if (romanMatcher.find()) {
-                    storedLevel = TextUtils.parseRomanNumerals(romanMatcher.group(1));
-                } else {
-                    Matcher numMatcher = Pattern.compile("(\\d+)$").matcher(plain);
-                    if (numMatcher.find()) storedLevel = Integer.parseInt(numMatcher.group(1));
+        // CASE 2: Enchant is NOT active -> Check lore to re-enable it
+        else {
+            Iterator<Component> it = lore.iterator();
+            while (it.hasNext()) {
+                Component component = it.next();
+                String plain = TextUtils.getPlainText(component);
+                String pretty = enchant.getKey().getKey().replace("_", " ");
+
+                if (plain.toLowerCase().startsWith(pretty.toLowerCase())) {
+                    // 1. Remove the lore line
+                    it.remove();
+
+                    // 2. Parse the level from the lore line
+                    int storedLevel = 1;
+                    Matcher romanMatcher = Pattern.compile("([IVXLCDM]+)$").matcher(plain);
+                    if (romanMatcher.find()) {
+                        storedLevel = TextUtils.parseRomanNumerals(romanMatcher.group(1));
+                    }
+
+                    // 3. Apply changes
+                    meta.lore(lore);
+                    item.setItemMeta(meta);
+                    item.addUnsafeEnchantment(enchant, storedLevel);
+                    return true;
                 }
-                meta.lore(lore);
-                item.setItemMeta(meta);
-                item.addUnsafeEnchantment(enchant, storedLevel);
-                return true;
             }
         }
+
+        // Enchantment wasn't active or disabled
         return false;
     }
 

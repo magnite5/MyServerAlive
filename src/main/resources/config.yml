@@ -32,8 +32,7 @@ settings:
   ### permission-prefix: msd
   ### NOT YET CONFIGURABLE
 
-  # The spawn used for the /spawn command.
-  # Format: world,x,y,z
-  # Set to "default" to use the server's default spawn.
-  spawn: "default"
+  # The name of the world to spawn players in using the /spawn command.
+  # Default: world
+  spawn-world: "world"
 
