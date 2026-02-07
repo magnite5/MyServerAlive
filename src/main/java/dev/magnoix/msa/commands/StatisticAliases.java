@@ -7,10 +7,8 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.StatisticsManager;
 import dev.magnoix.msa.messages.Msg;
-import dev.magnoix.msa.utils.TextUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
@@ -25,8 +23,6 @@ import java.util.logging.Level;
 public class StatisticAliases {
     public ArrayList<LiteralCommandNode<CommandSourceStack>> aliases = new ArrayList<>();
     private final StatisticsManager statisticsManager;
-
-    private final MiniMessage mm = MiniMessage.miniMessage();
 
     public StatisticAliases(StatisticsManager statisticsManager) {
         this.statisticsManager = statisticsManager;
@@ -60,17 +56,15 @@ public class StatisticAliases {
 
         validStats.add("nw");
 
-        validStats.forEach(type -> {
-            aliases.add(
-                    Commands.literal(type)
-                            .executes(ctx -> getStatistic(ctx, type))
-                            .then(Commands.argument("target", StringArgumentType.word())
-                                    .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
-                                    .suggests(onlinePlayerSuggestions())
-                                    .executes(ctx -> getOtherStatistic(ctx, type)))
-                            .build()
-            );
-        });
+        validStats.forEach(type -> aliases.add(
+                Commands.literal(type)
+                        .executes(ctx -> getStatistic(ctx, type))
+                        .then(Commands.argument("target", StringArgumentType.word())
+                                .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
+                                .suggests(onlinePlayerSuggestions())
+                                .executes(ctx -> getOtherStatistic(ctx, type)))
+                        .build()
+        ));
     }
 
     public ArrayList<LiteralCommandNode<CommandSourceStack>> getAliases(boolean generate) {
@@ -99,7 +93,7 @@ public class StatisticAliases {
             type = normalizeType(type);
             try {
                 int value = statisticsManager.getStatistic(player.getUniqueId(), type);
-                Msg.miniMsg("<gold>Your <yellow>" + TextUtils.capitalize(type) + "<dark_aqua>: <aqua>" + value + "<dark_aqua>.", player);
+                Msg.miniMsg("<gold>Your <yellow>" + type + "<dark_aqua>: <aqua>" + value + "<dark_aqua>.", player);
                 return 1;
             } catch (SQLException e) {
                 Msg.miniMsg("<red>Failed to get statistic.", sender);
@@ -128,7 +122,7 @@ public class StatisticAliases {
             int value = statisticsManager.getStatistic(target.getUniqueId(), type);
 
             String displayName = target.getName() != null ? target.getName() : targetString;
-            Msg.miniMsg("<gold>" + displayName + "<dark_aqua>'s <yellow>" + TextUtils.capitalize(type) + "<dark_aqua>: <aqua>" + value + "<dark_aqua>.", sender);
+            Msg.miniMsg("<gold>" + displayName + "<dark_aqua>'s <yellow>" + type + "<dark_aqua>: <aqua>" + value + "<dark_aqua>.", sender);
             return 1;
         } catch (SQLException e) {
             Msg.miniMsg("<red>Failed to get statistic for " + targetString + ".", sender);
