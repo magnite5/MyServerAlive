@@ -76,6 +76,7 @@ public final class MSA extends JavaPlugin {
             LiteralCommandNode<CommandSourceStack> toggleNode = toggleCommand.create();
             ConversionCommand conversionCommand = new ConversionCommand(statisticsManager, this);
             LiteralCommandNode<CommandSourceStack> conversionNode = conversionCommand.create();
+            StatisticAliases statsAliases = new StatisticAliases(statisticsManager);
 
             commands.registrar().register(testNode);
             commands.registrar().register(particleTestNode);
@@ -84,6 +85,7 @@ public final class MSA extends JavaPlugin {
             StartupUtils.registerCommandWithAliases(commands, statisticNode, "statistic", "stat", "st");
             StartupUtils.registerCommandWithAliases(commands, leaderboardNode, "lb", "top");
             StartupUtils.registerCommandWithAliases(commands, titleNode, "tt", "ranks", "labels");
+            StartupUtils.registerCommandNodes(commands, statsAliases.getAliases(true));
         });
     }
 
