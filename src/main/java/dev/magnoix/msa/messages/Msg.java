@@ -13,7 +13,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Msg {
-    static MiniMessage mm = MiniMessage.miniMessage();
+    private final static MiniMessage mm = MiniMessage.miniMessage();
     private static Logger logger;
     private static String pluginName;
 

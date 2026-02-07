@@ -40,12 +40,6 @@
                         </goals>
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <relocations>
-                                <relocation>
-                                    <pattern>de.slikey.effectlib</pattern>
-                                    <shadedPattern>dev.magnoix.msa.libs.effectlib</shadedPattern>
-                                </relocation>
-                            </relocations>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
@@ -53,13 +47,6 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                                <filter>
-                                    <artifact>com.elmakers.mine.bukkit:EffectLib</artifact>
-                                    <excludes>
-                                        <exclude>plugin.yml</exclude>
-                                        <exclude>migrate.php</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
@@ -81,10 +68,7 @@
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
-        <repository>
-            <id>elMakers</id>
-            <url>http://maven.elmakers.com/repository/</url>
-        </repository>
+        <!-- Removed EffectLib repo (elMakers) -->
     </repositories>
 
     <dependencies>
@@ -100,12 +84,9 @@
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.50.3.0</version>
         </dependency>
-        <dependency>
-            <groupId>com.elmakers.mine.bukkit</groupId>
-            <artifactId>EffectLib</artifactId>
-            <version>10.10</version>
-            <scope>compile</scope>
-        </dependency>
+
+        <!-- Removed com.elmakers.mine.bukkit:EffectLib -->
+
         <dependency>
             <groupId>net.luckperms</groupId>
             <artifactId>api</artifactId>

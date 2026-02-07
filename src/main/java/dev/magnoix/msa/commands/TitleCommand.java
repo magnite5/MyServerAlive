@@ -1,10 +1,7 @@
 package dev.magnoix.msa.commands;
 
-import com.mojang.brigadier.StringReader;
-import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
@@ -22,6 +19,7 @@ import org.bukkit.entity.Player;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
@@ -75,13 +73,11 @@ public class TitleCommand {
                         .executes(ctx -> {
                             CommandSender sender = ctx.getSource().getSender();
                             String name = ctx.getArgument("name", String.class);
-                            String prefix = ctx.getArgument("prefix", String.class);
+                            String prefix = normalizePrefixArg(ctx.getArgument("prefix", String.class));
                             try {
                                 TitleManager.title newTitle = titleManager.createTitle(name, prefix);
                                 titleManager.syncTitleUpdate(newTitle.id(), true);
                                 Msg.miniMsg("<dark_aqua>Created the new <gold>\"<yellow>" + newTitle.name() + "<gold>\" <dark_aqua>title ID <i><dark_gray>" + newTitle.id() + "</i>", sender);
-                                String unformattedPrefix = PlainTextComponentSerializer.plainText().serialize(TextUtils.parseMixedFormatting(prefix));
-                                if (unformattedPrefix.endsWith(" ")) Msg.miniMsg("<yellow>Warning: There is no space at the end of the prefix; <i>The prefix will be stuck to the player's name in practice.</i>", sender);
                                 return 1;
                             } catch (TitleManager.DuplicateTitleException e) {
                                 Msg.miniMsg("<red>A title with the name <gold>\"<yellow>" + name + "<gold>\" <red> already exists.", sender);
@@ -103,6 +99,10 @@ public class TitleCommand {
                             if (title != null) {
                                 titleManager.deleteTitle(title.id());
                                 Msg.miniMsg("<dark_aqua>Deleted the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title, ID <i><dark_gray>" + title.id() + "</i>", sender);
+
+                                for (UUID uuid : titleManager.getPlayersWithActiveTitle(title.id())) {
+                                    titleManager.setActivePrefix(uuid, 1);
+                                }
                             } else Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\" <yellow>exists.", sender);
                             return 1;
                         } catch (Exception e) {
@@ -117,12 +117,15 @@ public class TitleCommand {
                     .then(Commands.literal("prefix")
                         .then(Commands.argument("newPrefix", StringArgumentType.greedyString())
                             .executes(ctx -> {
-                                CommandSender sender =  ctx.getSource().getSender();
-                                String name =  ctx.getArgument("name", String.class);
-                                String newPrefix =  ctx.getArgument("newPrefix", String.class);
+                                CommandSender sender = ctx.getSource().getSender();
+                                String name = ctx.getArgument("name", String.class);
+
+                                String newPrefix = normalizePrefixArg(ctx.getArgument("newPrefix", String.class));
+
                                 try {
                                     TitleManager.title title = titleManager.getTitleFromName(name);
                                     TitleManager.title newTitle = titleManager.setTitlePrefix(title.id(), newPrefix);
+                                    titleManager.syncTitleUpdate(newTitle.id(), true);
                                     Msg.miniMsg("<dark_aqua>Updated the <gold>\"<yellow>" + newTitle.name() + "<gold>\" <dark_aqua>title's prefix.", sender);
                                     Msg.miniMsg("<dark_aqua>Old Prefix: <gold>\"" + title.prefix() + "<gold>\"<dark_aqua>. New Prefix: <gold>\"" + newTitle.prefix() + "<gold>\"<dark_aqua>.", sender);
                                     return 1;
@@ -249,6 +252,28 @@ public class TitleCommand {
                                     return 0;
                                 }
                             }))))).build();
+    }
+
+    private static String normalizePrefixArg(String raw) {
+        if (raw == null) return null;
+
+        String s = raw;
+
+        // Strip wrapping quotes: "..." or '...'
+        if (s.length() >= 2) {
+            char first = s.charAt(0);
+            char last = s.charAt(s.length() - 1);
+            if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
+                s = s.substring(1, s.length() - 1);
+            }
+        }
+
+        // Explicit trailing space token
+        if (s.endsWith("\\s")) {
+            s = s.substring(0, s.length() - 2) + " ";
+        }
+
+        return s;
     }
 
     private boolean isTargetValid(OfflinePlayer target) {

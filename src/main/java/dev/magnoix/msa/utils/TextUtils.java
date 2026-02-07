@@ -58,7 +58,7 @@ public class TextUtils {
 
     public static Component parseMixedFormatting(String input) {
         Matcher matcher = LEGACY_PATTERN.matcher(input);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
 
         while (matcher.find()) {
             String group = matcher.group(1);
@@ -118,7 +118,6 @@ public class TextUtils {
     public static int parseRomanNumerals(String roman) {
         if (roman == null || roman.isEmpty()) return 1;
         return switch (roman.toUpperCase(Locale.ROOT)) {
-            case "I" -> 1;
             case "II" -> 2;
             case "III" -> 3;
             case "IV" -> 4;

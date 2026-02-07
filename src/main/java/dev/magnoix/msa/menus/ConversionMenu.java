@@ -1,7 +1,6 @@
 package dev.magnoix.msa.menus;
 
 import dev.magnoix.msa.databases.StatisticsManager;
-import dev.magnoix.msa.logging.FileLogger;
 import dev.magnoix.msa.messages.Msg;
 import dev.magnoix.msa.utils.ItemCreator;
 import dev.magnoix.msa.utils.TextUtils;
@@ -20,15 +19,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class ConversionMenu {
-    //TODO: Make all operation items have type metadata
     private final JavaPlugin plugin;
-    private final Logger logger;
 
     private final StatisticsManager statisticsManager;
-    private final FileLogger statsLogger;
 
     private final NamespacedKey ITEM_TYPE_KEY;
 
@@ -36,9 +31,7 @@ public class ConversionMenu {
 
     public ConversionMenu(StatisticsManager statisticsManager, JavaPlugin plugin) {
         this.plugin = plugin;
-        this.logger = plugin.getLogger();
         this.statisticsManager = statisticsManager;
-        this.statsLogger = statisticsManager.getLogger();
         this.ITEM_TYPE_KEY = new NamespacedKey(plugin, "item_type");
     }
 

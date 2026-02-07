@@ -45,9 +45,7 @@ public class ToggleCommand {
     public SuggestionProvider<CommandSourceStack> toggleableEnchantSuggestions(ItemStack item) {
         return (CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) -> {
             Map<Enchantment, Integer> toggleableItemEnchants = getToggleableItemEnchants(item);
-            toggleableItemEnchants.forEach((enchantment, level) -> {
-                builder.suggest(enchantment.getKey().getKey());
-            });
+            toggleableItemEnchants.forEach((enchantment, level) -> builder.suggest(enchantment.getKey().getKey()));
             return CompletableFuture.completedFuture(builder.build());
         };
     }
@@ -131,7 +129,7 @@ public class ToggleCommand {
     }
 
     /**
-     * Get a map of all toggleable enchants, including both enabled and disabled toggleable enchantments.
+     * Get a map of all toggleable enchantments, including both enabled and disabled toggleable enchantments.
      * @param itemStack The item to check.
      * @return A map of Enchantments and their Levels.
      */

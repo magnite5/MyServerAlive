@@ -99,26 +99,21 @@ public class TitleMenu { //todo: Un-italicise everything
     }
 
     private ItemStack getTitleItem(TitleManager.title title, boolean isActive) {
-        try {
-            return ItemCreator.create(
-                Material.NAME_TAG,
-                isActive
-                    ? Component.text(title.name()).color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false)
-                    : Component.text(title.name()).decoration(TextDecoration.ITALIC, false),
-                List.of(
-                    mm.deserialize("<!i><gray>").append(titleManager.getFormattedPrefix(title)),
-                    Component.text(""),
-                    (isActive)
-                        ? mm.deserialize("<u><!i><red>Click</u> <!i><red>to Unequip")
-                        : mm.deserialize("<u><!i><yellow>Click</u> <!i><yellow>to Equip"),
-                    mm.deserialize("<dark_gray><i>ID: " + title.id())
-                ),
-                isActive
-            );
-        } catch (SQLException e) {
-            Msg.log(Level.SEVERE, "An error occurred while accessing the database to build a title item.");
-            return ItemCreator.errorItem();
-        }
+        return ItemCreator.create(
+            Material.NAME_TAG,
+            isActive
+                ? Component.text(title.name()).color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false)
+                : Component.text(title.name()).decoration(TextDecoration.ITALIC, false),
+            List.of(
+                mm.deserialize("<!i><gray>").append(titleManager.getFormattedPrefix(title)),
+                Component.text(""),
+                (isActive)
+                    ? mm.deserialize("<u><!i><red>Click</u> <!i><red>to Unequip")
+                    : mm.deserialize("<u><!i><yellow>Click</u> <!i><yellow>to Equip"),
+                mm.deserialize("<dark_gray><i>ID: " + title.id())
+            ),
+            isActive
+        );
     }
     private ItemStack backgroundItem() { return ItemCreator.create(Material.GRAY_STAINED_GLASS_PANE, Component.text(" ").decoration(TextDecoration.ITALIC, false)); }
     private ItemStack headerItem() { return ItemCreator.create(Material.BLUE_STAINED_GLASS_PANE, Component.text(" ").decoration(TextDecoration.ITALIC, false)); }

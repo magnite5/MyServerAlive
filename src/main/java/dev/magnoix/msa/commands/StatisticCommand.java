@@ -29,9 +29,6 @@ public class StatisticCommand {
     private final Set<String> VALID_STATISTICS;
     private final MiniMessage mm = MiniMessage.miniMessage();
 
-    private static final List<String> SUB_COMMANDS = new ArrayList<>(List.of(
-        "get", "add", "set", "multiply", "reset"
-    )); // List of subcommands. Does not include "help", as it is always available
 
     public Set<String> getValidStatistics() { return VALID_STATISTICS; }
 
@@ -187,7 +184,7 @@ public class StatisticCommand {
     /**
      * Resolve an OfflinePlayer target from a Command Context's "target" argument
      * @param ctx The Command Context
-     * @return the OfflinePlayer to target
+     * @return offlinePlayer to target
      */
     protected OfflinePlayer resolveTarget(CommandContext<CommandSourceStack> ctx) {
         String name = ctx.getArgument("target", String.class);
@@ -199,32 +196,6 @@ public class StatisticCommand {
 
     private boolean isTargetValid(OfflinePlayer target) {
         return target != null && (target.hasPlayedBefore() || target.isOnline());
-    }
-
-    private int evaluateModification(CommandContext<CommandSourceStack> ctx) {
-        switch (ctx.getArgument("operation", String.class).toLowerCase()) {
-            case "set":
-            case "=": subCommandSet(ctx);
-            break;
-
-            case "add":
-            case "+": subCommandAdd(ctx);
-            break;
-
-            case "multiply":
-            case "*": subCommandMultiply(ctx);
-            break;
-
-            case "reset":
-            case "//": subCommandReset(ctx);
-            break;
-
-            default: {
-                CommandSender sender = ctx.getSource().getSender();
-                sender.sendMessage(mm.deserialize("<red>Invalid Operation or Type."));
-            }
-        }
-        return 1;
     }
 
     private int overviewCommand(CommandContext<CommandSourceStack> ctx) {

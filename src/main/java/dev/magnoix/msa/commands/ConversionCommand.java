@@ -10,8 +10,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.awt.*;
-
 public class ConversionCommand {
     private final StatisticsManager statisticsManager;
     private final JavaPlugin plugin;

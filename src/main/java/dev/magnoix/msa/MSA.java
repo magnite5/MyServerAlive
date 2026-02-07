@@ -1,7 +1,6 @@
 package dev.magnoix.msa;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import de.slikey.effectlib.EffectManager;
 import dev.magnoix.msa.commands.*;
 import dev.magnoix.msa.databases.PluginDatabase;
 import dev.magnoix.msa.databases.StatisticsManager;
@@ -15,10 +14,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
-import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;
-import java.util.logging.Logger;
 
 public final class MSA extends JavaPlugin {
 
@@ -33,7 +30,6 @@ public final class MSA extends JavaPlugin {
 
     private PluginDatabase pluginDatabase;
     private BukkitScheduler scheduler;
-    private EffectManager effectManager;
 
     @Override
     public void onEnable() {
@@ -58,14 +54,10 @@ public final class MSA extends JavaPlugin {
         StatisticsManager statisticsManager = pluginDatabase.getStatisticsManager();
         statisticsManager.updateStatisticTypes(this);
 
-        effectManager = new EffectManager(this);
         getServer().getPluginManager().registerEvents(new MiscEvents(), this);
         getServer().getPluginManager().registerEvents(new PlayerEvents(statisticsManager, pluginDatabase.getTitleManager(), getPlugin(MSA.class)), this);
 
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
-            LiteralCommandNode<CommandSourceStack> testNode = dev.magnoix.msa.commands.TestCommand.create();
-            LiteralCommandNode<CommandSourceStack> particleTestNode = ParticleTestCommand.create(effectManager);
-
             StatisticCommand statisticCommand = new StatisticCommand(statisticsManager);
             LiteralCommandNode<CommandSourceStack> statisticNode = statisticCommand.create();
             LeaderboardCommand leaderboardCommand = new LeaderboardCommand(statisticsManager);
@@ -78,8 +70,6 @@ public final class MSA extends JavaPlugin {
             LiteralCommandNode<CommandSourceStack> conversionNode = conversionCommand.create();
             StatisticAliases statsAliases = new StatisticAliases(statisticsManager);
 
-            commands.registrar().register(testNode);
-            commands.registrar().register(particleTestNode);
             commands.registrar().register(toggleNode);
             commands.registrar().register(conversionNode);
             commands.registrar().register(new SpawnCommand().create(this));
@@ -98,16 +88,7 @@ public final class MSA extends JavaPlugin {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        if (effectManager != null) {
-            effectManager.dispose();
-        }
-    }
-
-    @Override
-    public @NotNull Logger getLogger() {
-        return super.getLogger();
     }
 
     public BukkitScheduler getScheduler() { return scheduler; }
-    public EffectManager getEffectManager() { return effectManager; }
 }

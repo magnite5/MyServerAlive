@@ -7,7 +7,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
-import net.luckperms.api.model.user.User;
 import net.luckperms.api.node.types.PrefixNode;
 import org.bukkit.Bukkit;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -70,16 +69,15 @@ public class TitleManager {
      * Updates a player's luckperms prefix with the given title's prefix, asynchronously.
      * @param uuid The UUID of the player whose prefix to synchronize.
      * @param activeTitle The title to sync to
-     * @throws SQLException If a database access error occurs.
      */
-    public void updateLuckPermsPrefixAsync(UUID uuid, title activeTitle) throws SQLException {
+    public void updateLuckPermsPrefixAsync(UUID uuid, title activeTitle) {
         String activePrefix = LegacyComponentSerializer.legacySection().serialize(mm.deserialize(activeTitle.prefix));
 
         luckPerms.getUserManager().loadUser(uuid).thenAcceptAsync(user -> {
             String currentPrefix = user.getCachedData().getMetaData().getPrefix();
             if (!activePrefix.equals(currentPrefix)) {
                 user.data().clear(node -> node instanceof PrefixNode);
-                PrefixNode prefixNode = PrefixNode.builder(activePrefix, 10).build();
+                PrefixNode prefixNode = PrefixNode.builder(activePrefix, 2).build();
                 user.data().add(prefixNode);
                 luckPerms.getUserManager().saveUser(user);
             }
@@ -146,7 +144,7 @@ public class TitleManager {
     // --- Title Management ---
 
     /**
-     * Ensures that a default title exists, and creates one if it doesn't.
+     * Ensures that a default title exists and creates one if it doesn't.
      */
     public void confirmDefaultTitle() {
         try {
@@ -229,7 +227,7 @@ public class TitleManager {
             }
         }
     }
-    public Component getFormattedPrefix(title title) throws SQLException {
+    public Component getFormattedPrefix(title title) {
         return TextUtils.parseMixedFormatting(title.prefix);
     }
     public Component getFormattedPrefix(int titleId) throws SQLException {
@@ -312,7 +310,7 @@ public class TitleManager {
     }
 
     /**
-     * Modifies an existing title by updating name and prefix
+     * Modifies an existing title by updating its name and prefix
      * @param titleId The ID of the title to modify.
      * @param name The new name of the title.
      * @param prefix The new prefix of the title.

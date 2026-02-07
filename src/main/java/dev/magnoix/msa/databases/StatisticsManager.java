@@ -241,7 +241,7 @@ public class StatisticsManager {
     }
 
     /**
-     * Retrieves the amount of entries of a given statistic type.
+     * Retrieves the number of entries of a given statistic type.
      * @param type The type of statistic to count.
      * @return The number of entries.
      * @throws SQLException If a database access error occurs.
@@ -259,14 +259,14 @@ public class StatisticsManager {
     }
 
     /**
-     * Convenience method for adding an amount of kills for a player.
+     * Convenience method for adding a number of kills for a player.
      */
     public void addKills(UUID uuid, int kills) throws SQLException {
         addToStatistic(uuid, "kills", kills);
     }
 
     /**
-     * Convenience method for adding an amount of deaths for a player.
+     * Convenience method for adding a number of deaths for a player.
      */
     public void addDeaths(UUID uuid, int deaths) throws SQLException {
         addToStatistic(uuid, "deaths", deaths);
@@ -342,8 +342,8 @@ public class StatisticsManager {
      * Retrieves a list of leaderboard entries for a given statistic from a specific rank range (inclusive).
      * Converts startIndex and endIndex to proper limit and offset, then delegates to getTopPlayers.
      * @param type       The statistic type to sort and fetch (e.g. "kills"). Must be in validColumns.
-     * @param startIndex The 1-based index of the first rank to fetch (e.g. 11 for 11th place). Must be >= 1.
-     * @param endIndex   The 1-based index of the last rank to fetch (inclusive, e.g. 20 for 20th place). Must be >= startIndex.
+     * @param startIndex The 1-based index of the first rank to fetch (e.g., 11 for 11th place). Must be >= 1.
+     * @param endIndex   The 1-based index of the last rank to fetch (inclusive, e.g., 20 for 20th place). Must be >= startIndex.
      * @return A list of LeaderboardEntry objects representing ranks in the specified range.
      * @throws IllegalArgumentException If indexes are out of range.
      * @throws SQLException             If a database access error occurs.

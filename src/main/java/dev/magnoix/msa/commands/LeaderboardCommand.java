@@ -43,9 +43,7 @@ public class LeaderboardCommand {
                     }
                     return builder.buildFuture();
                 })
-                .executes(ctx -> {
-                    return handleLeaderboard(ctx, 1);
-                })
+                .executes(ctx -> handleLeaderboard(ctx, 1))
                 .then(Commands.argument("page", IntegerArgumentType.integer())
                     .executes(ctx -> {
                         int page = ctx.getArgument("page", Integer.class);
