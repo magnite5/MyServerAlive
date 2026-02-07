@@ -136,11 +136,20 @@ public class Menu {
             if (inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) inventory.setItem(i, item);
         }
     }
+
     public void setRow(int row, ItemStack item) {
-        for (int i = 0; i < inventory.getSize(); i++) {
-            if (i % 9 == row && (inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) ) inventory.setItem(i, item);
+        int start = row * 9;
+        int end = Math.min(start + 9, inventory.getSize());
+
+        if (start < 0 || start >= inventory.getSize()) return;
+
+        for (int i = start; i < end; i++) {
+            if (inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) {
+                inventory.setItem(i, item);
+            }
         }
     }
+
     public void setColumn (int column, ItemStack item) {
         for (int i = column; i < inventory.getSize(); i += 9) {
             inventory.setItem(i, item);

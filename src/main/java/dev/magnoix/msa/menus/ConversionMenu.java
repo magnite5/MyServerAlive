@@ -4,6 +4,7 @@ import dev.magnoix.msa.databases.StatisticsManager;
 import dev.magnoix.msa.logging.FileLogger;
 import dev.magnoix.msa.messages.Msg;
 import dev.magnoix.msa.utils.ItemCreator;
+import dev.magnoix.msa.utils.TextUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -49,59 +50,63 @@ public class ConversionMenu {
         } catch (SQLException e) {
             Msg.miniMsg("An error occurred while retrieving your networth.", player);
         }
-        Menu menu = new Menu(54, Component.text("Networth Conversion Menu"));
+        Menu menu = new Menu(36, Component.text("Networth Conversion Menu"));
         // Divider Items
         for (int i = 0; i < 4; i++) {
             menu.setColumn(i, greenBackgroundItem());
             menu.setColumn(i + 5, redBackgroundItem());
         }
         menu.setColumn(4, borderItem());
-        menu.setRow(0, borderItem());
-        menu.setRow(8, borderItem());
         // Display Items
         menu.setItem(4, playerSkullItem(player, nw));
 
         // Interaction Items
         menu.setItem(0, depositAllItem(player), (p, e) -> { // TODO: Reduce repeated operations
             depositAll(p);
+            open(p);
         });
-        menu.setItem(53, closeButton(), (p, e) -> {
-            p.closeInventory();
-        });
+        menu.setItem(31, closeButton(), (p, e) -> p.closeInventory());
         // Deposit
-        menu.setItem(19, depositItem(64, "KELP", Material.DRIED_KELP_BLOCK, false), (p, e) -> {
+        menu.setItem(10, depositItem(64, "KELP", Material.DRIED_KELP_BLOCK, false), (p, e) -> {
             if (e.getClick().isLeftClick()) depositItems(p, "KELP", 1);
             else depositItems(p, "KELP", 64);
-            
+            open(p);
         });
-        menu.setItem(20, depositItem(64, "COMPRESSED_KELP", Material.DRIED_KELP_BLOCK, true), (p, e) -> {
+        menu.setItem(11, depositItem(64, "COMPRESSED_KELP", Material.DRIED_KELP_BLOCK, true), (p, e) -> {
             if (e.getClick().isLeftClick()) depositItems(p, "COMPRESSED_KELP", 1);
             else depositItems(p, "COMPRESSED_KELP", 64);
+            open(p);
         });
-        menu.setItem(28, depositItem(64, "PICKLE", Material.SEA_PICKLE, false), (p, e) -> {
+        menu.setItem(19, depositItem(64, "PICKLE", Material.SEA_PICKLE, false), (p, e) -> {
             if (e.getClick().isLeftClick()) depositItems(p, "PICKLE", 1);
             else depositItems(p, "PICKLE", 64);
+            open(p);
         });
-        menu.setItem(29, depositItem(64, "COMPRESSED_PICKLE", Material.SEA_PICKLE, true), (p, e) -> {
+        menu.setItem(20, depositItem(64, "COMPRESSED_PICKLE", Material.SEA_PICKLE, true), (p, e) -> {
             if (e.getClick().isLeftClick()) depositItems(p, "COMPRESSED_PICKLE", 1);
             else depositItems(p, "COMPRESSED_PICKLE", 64);
+            open(p);
         });
         // Withdraw
-        menu.setItem(24, withdrawItem(64, "KELP", Material.DRIED_KELP_BLOCK, false), (p, e) -> {
+        menu.setItem(15, withdrawItem(64, "KELP", Material.DRIED_KELP_BLOCK, false), (p, e) -> {
             if (e.getClick().isLeftClick()) withdrawItems(p, "KELP", 1);
             else withdrawItems(p, "KELP", 64);
+            open(p);
         });
-        menu.setItem(25, withdrawItem(64, "COMPRESSED_KELP", Material.DRIED_KELP_BLOCK, true), (p, e) -> {
+        menu.setItem(16, withdrawItem(64, "COMPRESSED_KELP", Material.DRIED_KELP_BLOCK, true), (p, e) -> {
             if (e.getClick().isLeftClick()) withdrawItems(p, "COMPRESSED_KELP", 1);
             else withdrawItems(p, "COMPRESSED_KELP", 64);
+            open(p);
         });
-        menu.setItem(33, withdrawItem(64, "PICKLE", Material.SEA_PICKLE, false), (p, e) -> {
+        menu.setItem(24, withdrawItem(64, "PICKLE", Material.SEA_PICKLE, false), (p, e) -> {
             if (e.getClick().isLeftClick()) withdrawItems(p, "PICKLE", 1);
             else withdrawItems(p, "PICKLE", 64);
+            open(p);
         });
-        menu.setItem(34, withdrawItem(64, "COMPRESSED_PICKLE", Material.SEA_PICKLE, true), (p, e) -> {
+        menu.setItem(25, withdrawItem(64, "COMPRESSED_PICKLE", Material.SEA_PICKLE, true), (p, e) -> {
             if (e.getClick().isLeftClick()) withdrawItems(p, "COMPRESSED_PICKLE", 1);
             else withdrawItems(p, "COMPRESSED_PICKLE", 64);
+            open(p);
         });
 
         menu.Open(player);
@@ -138,7 +143,7 @@ public class ConversionMenu {
             if (item == null || item.getType() == Material.AIR) continue;
 
             String itemType = getItemType(item);
-            if (itemType != null && type.equalsIgnoreCase(itemType)) {
+            if (type.equalsIgnoreCase(itemType)) {
                 count += item.getAmount();
             }
         }
@@ -153,7 +158,7 @@ public class ConversionMenu {
 
         int count = countItems(player, type);
         if (count < amount) {
-            Msg.miniMsg("<red>You do not have enough items to perform the operation.", player);
+            Msg.miniMsg("<red>Insufficient Items.", player);
             return 0;
         }
 
@@ -185,7 +190,7 @@ public class ConversionMenu {
             int newBalance = oldBalance + profit;
 
             Msg.miniMsg("<dark_aqua>- <aqua>" + amount + "<dark_aqua> Item " + (amount == 1 ? " " : "s ") +
-                "; + <aqua>" + profit + "<dark_aqua>NW" +
+                "; + <aqua>" + profit + "<dark_aqua>nw" +
                 "; New Balance: <aqua>" + newBalance + "<dark_aqua>.", player);
             return newBalance;
         } catch (SQLException e) {
@@ -194,7 +199,7 @@ public class ConversionMenu {
 
             Msg.miniMsg("<red>An error occurred while updating your networth. Your items have been returned.", player);
             statisticsManager.logIfLogged("networth", "Failed a " + amount + " " + type + " deposit for " + player.getName() + ", worth " + profit);
-            Msg.log(Level.SEVERE, "Failed NW deposit for " + player.getName() + ": " + e.getMessage());
+            Msg.log(Level.SEVERE, "Failed nw deposit for " + player.getName() + ": " + e.getMessage());
             return 0;
         }
     }
@@ -205,7 +210,6 @@ public class ConversionMenu {
      * @return An int array with the total value and number of items counted
      */
     public int[] getInventoryValue(Player player) {
-        UUID uuid = player.getUniqueId();
         int value = 0; // total inventory value
         int count = 0; // # of valued items
         
@@ -251,7 +255,7 @@ public class ConversionMenu {
             try {
                 int newBalance = statisticsManager.addToStatistic(uuid, "networth", profit) + profit;
                 Msg.miniMsg("<dark_aqua>- <aqua>" + count + "<dark_aqua> Item" + (count == 1 ? " " : "s ") +
-                    "; + <aqua>" + profit + " <dark_aqua>NW" +
+                    "; + <aqua>" + profit + " <dark_aqua>nw" +
                     "; New Balance: <aqua>" + newBalance + "<dark_aqua>.", player);
                 return newBalance;
             } catch (SQLException e) {
@@ -260,7 +264,7 @@ public class ConversionMenu {
 
                 Msg.miniMsg("<red>An error occurred while updating your networth. Your items have been returned.", player);
                 statisticsManager.logIfLogged("networth", "Failed a " + count + " item deposit for " + player.getName() + ", worth " + profit);
-                Msg.log(Level.SEVERE, "Failed NW deposit for " + player.getName() + ": " + e.getMessage());
+                Msg.log(Level.SEVERE, "Failed nw deposit for " + player.getName() + ": " + e.getMessage());
             }
         }
         return 0;
@@ -281,7 +285,7 @@ public class ConversionMenu {
 
         int cost = typeValue * amount;
         if (cost > nw) {
-            Msg.miniMsg("<dark_aqua>You cannot afford <aqua>" + amount + " <yellow>" + getTypeDisplay(type, amount) , player);
+            Msg.miniMsg("<dark_aqua>You cannot afford <aqua>" + amount + " <yellow>" + getCapitalizedTypeDisplay(type, amount) , player);
             return 0;
         }
         int freeSpace = getFreeSpace(player, type);
@@ -310,9 +314,9 @@ public class ConversionMenu {
             itemsLeft -= stackSize;
         }
 
-        String displayType = getTypeDisplay(type, amount);
-        Msg.miniMsg("<dark_aqua>+ <aqua>" + amount + " <dark_aqua> <yellow>" + displayType +
-            "<dark_aqua>; - <aqua>" + cost + " <dark_aqua>NW" +
+        String displayType = getCapitalizedTypeDisplay(type, amount);
+        Msg.miniMsg("<dark_aqua>+ <aqua>" + amount + " <yellow>" + displayType +
+            "<dark_aqua>; - <aqua>" + cost + " <dark_aqua>nw" +
             "; New Balance: <aqua>" + newBalance,
             player);
         return newBalance;
@@ -333,16 +337,16 @@ public class ConversionMenu {
         // Calculate # of items affordable by player
         int canAfford = nw / typeValue;
         if (canAfford <= 0) {
-            Msg.miniMsg("<dark_aqua>You cannot afford any " + getTypeDisplay(type, 2) + ".", player);
+            Msg.miniMsg("<dark_aqua>You cannot afford any " + getCapitalizedTypeDisplay(type, 2) + ".", player);
             return 0;
         }
-        // Calculate # of items that can fit in player's inventory
+        // Calculate # of items that can fit in the player's inventory
         int canFit = getFreeSpace(player, type);
         if (canFit <= 0) {
             Msg.miniMsg("<dark_aqua>Your inventory is full. Please make some space.", player);
             return 0;
         }
-        // Withdraw bottleneck amount, return new balance
+        // Withdraw bottleneck amount, return the new balance
         int max = Math.min(canAfford, canFit);
         return withdrawItems(player, type, max);
     }
@@ -359,10 +363,21 @@ public class ConversionMenu {
     }
 
     private String getTypeDisplay(String type, int amount) {
-        return type.toLowerCase().replaceAll("_", " ") + (amount == 1 ? "" : "s");
+        String typeDisplay = type.toLowerCase().replaceAll("_", " ");
+        if (type.equalsIgnoreCase("kelp") || type.equalsIgnoreCase("compressed_kelp")) {
+            return typeDisplay;
+        } else {
+            return typeDisplay += (amount == 1 ? "" : "s");
+        }
+    }
+    private String getCapitalizedTypeDisplay(String type, int amount) {
+        return TextUtils.capitalizeEach(getTypeDisplay(type, amount));
     }
     private String getTypeDisplay(String type) {
         return type.toLowerCase().replaceAll("_", " ");
+    }
+    private String getCapitalizedTypeDisplay(String type) {
+        return TextUtils.capitalizeEach(getTypeDisplay(type));
     }
 
     private int getFreeSpace(Player player, String type) {
@@ -378,7 +393,7 @@ public class ConversionMenu {
             }
 
             String itemType = getItemType(item);
-            if (itemType != null && type.equalsIgnoreCase(itemType)) {
+            if (type.equalsIgnoreCase(itemType)) {
                 count += item.getMaxStackSize() - item.getAmount();
             }
         }
@@ -389,12 +404,12 @@ public class ConversionMenu {
         ItemStack item = switch (type.toUpperCase()) {
             case "COMPRESSED_KELP" -> ItemCreator.create(
                 Material.DRIED_KELP_BLOCK,
-                mm.deserialize("<#4F4E2E>Compressed Kelp"),
+                mm.deserialize("<!i><color:#3f4f2d>Compressed Kelp"),
                 true);
             case "PICKLE" -> ItemCreator.create(Material.SEA_PICKLE);
             case "COMPRESSED_PICKLE" -> ItemCreator.create(
                 Material.SEA_PICKLE,
-                mm.deserialize("<#4B4F1F>Compressed Pickle"),
+                mm.deserialize("<!i><color:#324f1e>Compressed Pickle"),
                 true);
             default -> ItemCreator.create(Material.DRIED_KELP_BLOCK);
         };
@@ -412,8 +427,8 @@ public class ConversionMenu {
     private ItemStack closeButton() { return ItemCreator.create(Material.BARRIER, Component.text("Close").color(NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)); }
 
     private ItemStack playerSkullItem(Player player, int balance) {
-        return ItemCreator.skull(player.getUniqueId(), mm.deserialize("<gold>" + player.getName()), List.of(
-            mm.deserialize(" <gold><b>» </b><dark_aqua>Net Worth: <aqua>" + balance)
+        return ItemCreator.skull(player.getUniqueId(), mm.deserialize("<!i><gold>" + player.getName()), List.of(
+            mm.deserialize("<!i> <gold><b>» </b><dark_aqua>Net Worth: <aqua>" + balance)
         ));
     }
 
@@ -433,62 +448,62 @@ public class ConversionMenu {
         }
 
         List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Click: Deposit <aqua>ALL"));
+        lore.add(mm.deserialize("<!i> <gold><b>» </b><dark_aqua>Click: Deposit <aqua>ALL"));
 
         if (totalItems > 0 && totalNw > 0) {
-            lore.add(mm.deserialize(" <gold>└ <aqua>" + totalItems + " <dark_aqua>Item" + (totalItems == 1 ? "" : "s")
-                + " <dark_aqua>for <aqua>" + totalNw + " <dark_aqua>NW"));
+            lore.add(mm.deserialize("<!i> <gold>└ <aqua>" + totalItems + " <dark_aqua>Item" + (totalItems == 1 ? "" : "s")
+                + " <dark_aqua>for <aqua>" + totalNw + " <dark_aqua>nw"));
         } else {
-            lore.add(mm.deserialize(" <gold>└ <red>No valued items found"));
+            lore.add(mm.deserialize("<!i> <gold>└ <red>No valuable items found"));
         }
 
         return ItemCreator.create(
             Material.GLOBE_BANNER_PATTERN,
-            mm.deserialize("<red><b>DEPOSIT ALL</b><gold>| Inventory"),
+            mm.deserialize("<!i><green><b>DEPOSIT ALL</b> <gold>| Inventory"),
             lore,
             totalNw > 0
         );
     }
 
     private ItemStack depositItem(int maxAmount, String type, Material material, boolean isGlowing) {
-        String typeDisplay = getTypeDisplay(type);
+        String typeDisplay = getCapitalizedTypeDisplay(type);
         int typeValue = getTypeValue(type);
         List<Component> lore = new ArrayList<>();
 
-        lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Left Click: Deposit <aqua>1"));
-        lore.add(mm.deserialize(" <gold>└ For <aqua>" + typeValue));
+        lore.add(mm.deserialize("<!i> <gold><b>» </b><dark_aqua>Left Click: Deposit <aqua>1"));
+        lore.add(mm.deserialize("<!i> <gold>└ For <aqua>" + typeValue));
 
         if (maxAmount >= 10) {
-            lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Right Click: Deposit <aqua>10"));
-            lore.add(mm.deserialize(" <gold>└ For <aqua>" + typeValue * 10));
+            lore.add(mm.deserialize("<!i> <gold><b>» </b><dark_aqua>Right Click: Deposit <aqua>" + maxAmount));
+            lore.add(mm.deserialize("<!i> <gold>└ For <aqua>" + typeValue * maxAmount));
         }
 
-        lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Shift + Left Click: Deposit <aqua>ALL"));
-        lore.add(mm.deserialize(" <gold>└ <aqua>" + maxAmount + " For <aqua>" + (typeValue * maxAmount)));
+//        lore.add(mm.deserialize("<!i> <gold><b>» </b><dark_aqua>Shift + Left Click: Deposit <aqua>ALL"));
+//        lore.add(mm.deserialize("<!i> <gold>└ <aqua>" + maxAmount + " For <aqua>" + (typeValue * maxAmount)));
 
-        ItemStack item = ItemCreator.create(material, mm.deserialize("<red><b>DEPOSIT </b><gold>| " + typeDisplay), lore, isGlowing);
+        ItemStack item = ItemCreator.create(material, mm.deserialize("<!i><green><b>DEPOSIT </b><gold>| " + typeDisplay), lore, isGlowing);
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(ITEM_TYPE_KEY, PersistentDataType.STRING, type.toUpperCase());
         item.setItemMeta(meta);
         return item;
     }
     private ItemStack withdrawItem(int maxAmount, String type, Material material, boolean isGlowing) {
-        String typeDisplay = getTypeDisplay(type);
+        String typeDisplay = getCapitalizedTypeDisplay(type);
         int typeValue = getTypeValue(type);
         List<Component> lore = new ArrayList<>();
 
-        lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Left Click: Withdraw <aqua>1"));
-        lore.add(mm.deserialize(" <gold>└ For <aqua>" + typeValue));
+        lore.add(mm.deserialize("<!i> <gold><b>» </b><dark_aqua>Left Click: Withdraw <aqua>1"));
+        lore.add(mm.deserialize("<!i> <gold>└ For <aqua>" + typeValue));
 
         if (maxAmount >= 10) {
-            lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Right Click: Withdraw <aqua>10"));
-            lore.add(mm.deserialize(" <gold>└ For <aqua>" + typeValue * 10));
+            lore.add(mm.deserialize("<!i> <gold><b>» </b><dark_aqua>Right Click: Withdraw <aqua>" + maxAmount));
+            lore.add(mm.deserialize("<!i> <gold>└ For <aqua>" + typeValue * maxAmount));
         }
 
-        lore.add(mm.deserialize(" <gold><b>» </b><dark_aqua>Shift + Left Click: Withdraw <aqua>ALL"));
-        lore.add(mm.deserialize(" <gold>└ <aqua>" + maxAmount + " For <aqua>" + (typeValue * maxAmount)));
+//        lore.add(mm.deserialize("<!i> <gold><b>» </b><dark_aqua>Shift + Left Click: Withdraw <aqua>ALL"));
+//        lore.add(mm.deserialize("<!i> <gold>└ <aqua>" + maxAmount + " For <aqua>" + (typeValue * maxAmount)));
 
-        ItemStack item = ItemCreator.create(material, mm.deserialize("<red><b>WITHDRAW </b><gold>| " + typeDisplay), lore, isGlowing);
+        ItemStack item = ItemCreator.create(material, mm.deserialize("<!i><red><b>WITHDRAW </b><gold>| " + typeDisplay), lore, isGlowing);
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(ITEM_TYPE_KEY, PersistentDataType.STRING, type.toUpperCase());
         item.setItemMeta(meta);

@@ -27,4 +27,8 @@ settings:
   # For example, the permission to toggle enchantments would be "<value>.toggle.*"
   # Must be an alphanumeric string, including underscores. (Only characters A-Z, a-z, 0-9, _)
   # Default: msd
-  permission-prefix: msd
+
+  ### NOT YET CONFIGURABLE
+  ### permission-prefix: msd
+  ### NOT YET CONFIGURABLE
+
