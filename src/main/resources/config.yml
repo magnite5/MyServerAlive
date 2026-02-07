@@ -32,3 +32,8 @@ settings:
   ### permission-prefix: msd
   ### NOT YET CONFIGURABLE
 
+  # The spawn used for the /spawn command.
+  # Format: world,x,y,z
+  # Set to "default" to use the server's default spawn.
+  spawn: "default"
+

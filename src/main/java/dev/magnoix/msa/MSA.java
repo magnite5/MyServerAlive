@@ -13,6 +13,7 @@ import dev.magnoix.msa.utils.StartupUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.jetbrains.annotations.NotNull;
@@ -24,10 +25,9 @@ public final class MSA extends JavaPlugin {
 
     /*
     TODO:
-        - NetWorth GUI (formerly /cv)
-        - /nw /kills /deaths shortcut commands
         - /rules command
         - /unequip
+        - /spawn
         - logging big jumps in stats
         - implement config-based permission prefix
         - PAPI Support
@@ -82,6 +82,7 @@ public final class MSA extends JavaPlugin {
             commands.registrar().register(particleTestNode);
             commands.registrar().register(toggleNode);
             commands.registrar().register(conversionNode);
+            commands.registrar().register(new SpawnCommand().create(this));
             StartupUtils.registerCommandWithAliases(commands, statisticNode, "statistic", "stat", "st");
             StartupUtils.registerCommandWithAliases(commands, leaderboardNode, "lb", "top");
             StartupUtils.registerCommandWithAliases(commands, titleNode, "tt", "ranks", "labels");
