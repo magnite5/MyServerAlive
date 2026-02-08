@@ -2,11 +2,10 @@ package dev.magnoix.msa.commands;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.StatisticsManager;
 import dev.magnoix.msa.messages.Msg;
+import dev.magnoix.msa.utils.CommandUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import org.bukkit.Bukkit;
@@ -16,8 +15,6 @@ import org.bukkit.entity.Player;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Predicate;
 import java.util.logging.Level;
 
 public class StatisticAliases {
@@ -26,23 +23,6 @@ public class StatisticAliases {
 
     public StatisticAliases(StatisticsManager statisticsManager) {
         this.statisticsManager = statisticsManager;
-    }
-
-    public static SuggestionProvider<CommandSourceStack> onlinePlayerSuggestions() {
-        return (CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) -> {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                builder.suggest(player.getName());
-            }
-            return CompletableFuture.completedFuture(builder.build());
-        };
-    }
-
-    private static Predicate<CommandSourceStack> requirePermission(String... perms) {
-        return src -> {
-            CommandSender sender = src.getSender();
-            for (String perm : perms) if (sender.hasPermission(perm)) return true;
-            return sender.isOp();
-        };
     }
 
     public void createAliases() {
@@ -60,8 +40,8 @@ public class StatisticAliases {
                 Commands.literal(type)
                         .executes(ctx -> getStatistic(ctx, type))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
-                                .suggests(onlinePlayerSuggestions())
+                                .requires(CommandUtils.requirePermission(".stats.get", ".stats.*", ".*"))
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .executes(ctx -> getOtherStatistic(ctx, type)))
                         .build()
         ));

@@ -52,7 +52,6 @@ public class StatisticsManager {
         Set<String> types = new HashSet<>(builtInTypes);
         plugin.getConfig().getStringList("statistics.custom-types").forEach(s ->
                 types.add(s.trim().toLowerCase().replaceAll(" ", "_")));
-
         loggedTypes.forEach(type -> {
             if (!types.contains(type)) loggedTypes.remove(type);
         });

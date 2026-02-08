@@ -31,6 +31,8 @@ public final class MSA extends JavaPlugin {
     private PluginDatabase pluginDatabase;
     private BukkitScheduler scheduler;
 
+    private final String permissionPrefix = "msa";
+
     @Override
     public void onEnable() {
         Msg.init(this);
@@ -58,12 +60,12 @@ public final class MSA extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerEvents(statisticsManager, pluginDatabase.getTitleManager(), getPlugin(MSA.class)), this);
 
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
-            StatisticCommand statisticCommand = new StatisticCommand(statisticsManager);
+            StatisticCommand statisticCommand = new StatisticCommand(permissionPrefix, statisticsManager);
             LiteralCommandNode<CommandSourceStack> statisticNode = statisticCommand.create();
             LeaderboardCommand leaderboardCommand = new LeaderboardCommand(statisticsManager);
             LiteralCommandNode<CommandSourceStack> leaderboardNode = leaderboardCommand.create();
             TitleCommand titleCommand = new TitleCommand();
-            LiteralCommandNode<CommandSourceStack> titleNode = titleCommand.create(pluginDatabase.getTitleManager());
+            LiteralCommandNode<CommandSourceStack> titleNode = titleCommand.create(permissionPrefix, pluginDatabase.getTitleManager());
             ToggleCommand toggleCommand = new ToggleCommand(this);
             LiteralCommandNode<CommandSourceStack> toggleNode = toggleCommand.create();
             ConversionCommand conversionCommand = new ConversionCommand(statisticsManager, this);

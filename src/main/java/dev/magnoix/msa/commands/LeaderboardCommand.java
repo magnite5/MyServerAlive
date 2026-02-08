@@ -25,9 +25,8 @@ public class LeaderboardCommand {
         Set<String> validStats;
         try {
             validStats = statisticsManager.getValidStatisticTypes();
-            Msg.log("(LB Command): Loaded statistics: " + validStats);
         } catch (Exception e) {
-            Msg.log(Level.SEVERE, "(LB Command): Failed to load valid statistics: " + e.getMessage());
+            Msg.log(Level.SEVERE, "Leaderboard Command: Failed to load valid statistics: " + e.getMessage());
             e.printStackTrace();
             validStats = Set.of(); // Empty set as a fallback
         }

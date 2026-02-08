@@ -10,6 +10,7 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.StatisticsManager;
 import dev.magnoix.msa.messages.Msg;
+import dev.magnoix.msa.utils.CommandUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -28,11 +29,13 @@ public class StatisticCommand {
     private final StatisticsManager statisticsManager;
     private final Set<String> VALID_STATISTICS;
     private final MiniMessage mm = MiniMessage.miniMessage();
-
+    
+    private final String permissionPrefix;
 
     public Set<String> getValidStatistics() { return VALID_STATISTICS; }
 
-    public StatisticCommand(StatisticsManager statisticsManager) {
+    public StatisticCommand(String permissionPrefix, StatisticsManager statisticsManager) {
+        this.permissionPrefix = permissionPrefix;
         this.statisticsManager = statisticsManager;
         Set<String> validStats;
         try {
@@ -44,37 +47,16 @@ public class StatisticCommand {
         this.VALID_STATISTICS = validStats;
     }
 
-    public static SuggestionProvider<CommandSourceStack> onlinePlayerSuggestions() {
-        return (CommandContext<CommandSourceStack> context,SuggestionsBuilder builder) -> {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                builder.suggest(player.getName());
-            }
-            return CompletableFuture.completedFuture(builder.build());
-        };
-    }
-
-    private static Predicate<CommandSourceStack> requirePermission(String... perms) {
-        return src -> {
-            CommandSender sender = src.getSender();
-            for (String perm : perms) if (sender.hasPermission(perm)) return true;
-            return sender.isOp();
-        };
-    }
-
     public LiteralCommandNode<CommandSourceStack> create() {
-        //TODO:
-        // Switch operation to an argument, for more suggestion display control
-
         return Commands.literal("stats")
-
             .executes(this::overviewCommand)
                 .then(Commands.literal("help")
                         .executes(this::subCommandHelp))
 
                 .then(Commands.literal("get")
-                        .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.get", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             for (String stat : VALID_STATISTICS) builder.suggest(stat);
@@ -82,9 +64,9 @@ public class StatisticCommand {
                                         })
                                         .executes(this::subCommandGet))))
                 .then(Commands.literal("?")
-                        .requires(requirePermission("msd.stats.get", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.get", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             for (String stat : VALID_STATISTICS) builder.suggest(stat);
@@ -94,9 +76,9 @@ public class StatisticCommand {
 
                 // "set" structure
                 .then(Commands.literal("set")
-                        .requires(requirePermission("msd.stats.set", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.set", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             for (String stat : VALID_STATISTICS) builder.suggest(stat);
@@ -105,9 +87,9 @@ public class StatisticCommand {
                                         .then(Commands.argument("value", IntegerArgumentType.integer())
                                                 .executes(this::subCommandSet)))))
                 .then(Commands.literal("=")
-                        .requires(requirePermission("msd.stats.set", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.set", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             for (String stat : VALID_STATISTICS) builder.suggest(stat);
@@ -118,9 +100,9 @@ public class StatisticCommand {
 
                 // "add" structure
                 .then(Commands.literal("add")
-                        .requires(requirePermission("msd.stats.add", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.add", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             for (String stat : VALID_STATISTICS) builder.suggest(stat);
@@ -129,9 +111,9 @@ public class StatisticCommand {
                                         .then(Commands.argument("amount", IntegerArgumentType.integer())
                                                 .executes(this::subCommandAdd)))))
                 .then(Commands.literal("+")
-                        .requires(requirePermission("msd.stats.add", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.add", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             for (String stat : VALID_STATISTICS) builder.suggest(stat);
@@ -142,9 +124,9 @@ public class StatisticCommand {
 
                 // "multiply" structure
                 .then(Commands.literal("multiply")
-                        .requires(requirePermission("msd.stats.multiply", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.multiply", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             for (String stat : VALID_STATISTICS) builder.suggest(stat);
@@ -153,9 +135,9 @@ public class StatisticCommand {
                                         .then(Commands.argument("multiplier", IntegerArgumentType.integer())
                                                 .executes(this::subCommandMultiply)))))
                 .then(Commands.literal("*")
-                        .requires(requirePermission("msd.stats.multiply", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.multiply", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             for (String stat : VALID_STATISTICS) builder.suggest(stat);
@@ -166,14 +148,14 @@ public class StatisticCommand {
 
                 // "reset"
                 .then(Commands.literal("reset")
-                        .requires(requirePermission("msd.stats.reset", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.reset", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .executes(this::subCommandReset)))
                 .then(Commands.literal("//")
-                        .requires(requirePermission("msd.stats.reset", "msd.stats.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".stats.reset", ".stats.*", ".*"))
                         .then(Commands.argument("target", StringArgumentType.word())
-                                .suggests(onlinePlayerSuggestions())
+                                .suggests(CommandUtils.onlinePlayerSuggestions())
                                 .executes(this::subCommandReset)))
                 .build();
     }
@@ -205,7 +187,7 @@ public class StatisticCommand {
             return 1;
         }
         List<String> messages = new ArrayList<>(List.of(
-            " <gold>| <u>Statistics Overview<u:false>",
+            " <gold>Statistics Overview<u:false>",
             " <gold>| <dark_aqua>Stats for <gold>" + player.getName() + "<dark_aqua>: "
         ));
         UUID uuid = player.getUniqueId();
@@ -225,8 +207,11 @@ public class StatisticCommand {
         CommandSender sender = ctx.getSource().getSender();
         List<String> messages = new ArrayList<>();
         if (sender instanceof Player player) {
-            if (player.hasPermission("msd.stats.self") || player.hasPermission("msd.stats.*") ||
-                player.hasPermission("msd.*")          || player.isOp()) {
+            messages.add(" <gold>Stats <u>Help<u:false>: ");
+            messages.add(" <dark_aqua>» <aqua>There are " + VALID_STATISTICS.size() + " valid statistics, each with a dedicated command:");
+            VALID_STATISTICS.forEach(stat -> messages.add(" <aqua>» <yellow>" + stat));
+            if (player.hasPermission(".stats.self") || player.hasPermission(".stats.*") ||
+                player.hasPermission(".*")          || player.isOp()) {
                 messages.add(" ");
                 messages.add(" <red>| <u>Admin Info<u:false>: ");
                 messages.add("  <red>» Usage: <dark_aqua>/<gold>stats <dark_aqua><<dark_green>operation<dark_aqua>> " +

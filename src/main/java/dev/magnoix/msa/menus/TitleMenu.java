@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public class TitleMenu { //todo: Un-italicise everything
+public class TitleMenu {
     private static final int MENU_SIZE = 45; // 5 rows
     private static final int PAGE_SIZE = 27;
     private static final int TITLE_START_SLOT = 9;

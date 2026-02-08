@@ -8,10 +8,9 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.TitleManager;
 import dev.magnoix.msa.menus.TitleMenu;
 import dev.magnoix.msa.messages.Msg;
-import dev.magnoix.msa.utils.TextUtils;
+import dev.magnoix.msa.utils.CommandUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
@@ -21,7 +20,6 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Predicate;
 
 public class TitleCommand {
     private TitleManager titleManager;
@@ -44,30 +42,13 @@ public class TitleCommand {
         return builder.buildFuture();
     }
 
-    public static SuggestionProvider<CommandSourceStack> onlinePlayerSuggestions() {
-        return (CommandContext<CommandSourceStack> context,SuggestionsBuilder builder) -> {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                builder.suggest(player.getName());
-            }
-            return CompletableFuture.completedFuture(builder.build());
-        };
-    }
-
-    private static Predicate<CommandSourceStack> requirePermission(String... perms) {
-        return src -> {
-            CommandSender sender = src.getSender();
-            for (String perm : perms) if (sender.hasPermission(perm)) return true;
-            return false;
-        };
-    }
-
-    public LiteralCommandNode<CommandSourceStack> create(TitleManager titleManager) {
+    public LiteralCommandNode<CommandSourceStack> create(String permissionPrefix, TitleManager titleManager) {
         this.titleManager = titleManager;
         this.titleMenu = new TitleMenu(titleManager);
         return Commands.literal("titles")
             .executes(this::commandGui)
             .then(Commands.literal("create")
-                .requires(requirePermission("msd.titles.create", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.create", ".titles.*", ".*"))
                 .then(Commands.argument("name", StringArgumentType.string())
                     .then(Commands.argument("prefix", StringArgumentType.greedyString())
                         .executes(ctx -> {
@@ -88,7 +69,7 @@ public class TitleCommand {
                             }
                         }))))
             .then(Commands.literal("delete")
-                .requires(requirePermission("msd.titles.delete", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.delete", ".titles.*", ".*"))
                 .then(Commands.argument("name", StringArgumentType.string())
                     .suggests(this::suggestTitleNames)
                     .executes(ctx -> {
@@ -111,7 +92,7 @@ public class TitleCommand {
                         }
                     })))
             .then(Commands.literal("edit")
-                .requires(requirePermission("msd.titles.edit", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.edit", ".titles.*", ".*"))
                 .then(Commands.argument("name", StringArgumentType.string())
                     .suggests(this::suggestTitleNames)
                     .then(Commands.literal("prefix")
@@ -151,9 +132,9 @@ public class TitleCommand {
                                 }
                             })))))
             .then(Commands.literal("sync")
-                .requires(requirePermission("msd.titles.sync", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.sync", ".titles.*", ".*"))
                 .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
+                    .suggests(CommandUtils.onlinePlayerSuggestions())
                     .executes(ctx -> {
                         CommandSender sender = ctx.getSource().getSender();
                         OfflinePlayer target = resolveTarget(ctx);
@@ -170,11 +151,11 @@ public class TitleCommand {
                         }
                     })))
             .then(Commands.literal("player")
-                .requires(requirePermission("msd.titles.player", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.player", ".titles.*", ".*"))
                 .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
+                    .suggests(CommandUtils.onlinePlayerSuggestions())
                     .then(Commands.literal("active")
-                        .requires(requirePermission("msd.titles.player.active", "msd.titles.player.*", "msd.titles.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.player.active", ".titles.player.*", ".titles.*", ".*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
@@ -201,7 +182,7 @@ public class TitleCommand {
                                 }
                             })))
                     .then(Commands.literal("give")
-                        .requires(requirePermission("msd.titles.player.give", "msd.titles.player.*", "msd.titles.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.player.give", ".titles.player.*", ".titles.*", ".*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
@@ -227,7 +208,7 @@ public class TitleCommand {
                                 }
                             })))
                     .then(Commands.literal("revoke")
-                        .requires(requirePermission("msd.titles.player.give", "msd.titles.player.*", "msd.titles.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.player.give", ".titles.player.*", ".titles.*", ".*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
