@@ -1,0 +1,38 @@
+### Config File for the MyServerAlive plugin
+
+# The list of allowed enchantment ids that can be toggles with the /toggle command.
+# Leave empty to disable the command completely.
+# Spaces in enchantment names must be replaced with an underscore.
+# Some examples: "knockback", "thorns", "fire_protection"...
+toggleable-enchants:
+  - "knockback"
+  - "thorns"
+
+  # Config section for anything relating to Statistics
+statistics:
+  # Extra statistic types to consider valid.
+  # The plugin is hardcoded to include kills, deaths and networth. These cannot be added or removed.
+  # Any spaces in entries will be converted to underscores, and it will be lowercase.
+  # Must be alphanumeric strings, including underscores. (Only characters A-Z, a-z, 0-9, _)
+  custom-types:
+    - "wins"
+  # The statistics to log events for. Same rules as "custom-types".
+  # Statistic types included in this list have their events logged in logs/stats.log
+  # Includes "networth" by default
+  logged-types:
+    - "networth"
+
+settings:
+  # The main permission section to use for player permissions.
+  # For example, the permission to toggle enchantments would be "<value>.toggle.*"
+  # Must be an alphanumeric string, including underscores. (Only characters A-Z, a-z, 0-9, _)
+  # Default: msd
+
+  ### NOT YET CONFIGURABLE
+  ### permission-prefix: msd
+  ### NOT YET CONFIGURABLE
+
+  # The name of the world to spawn players in using the /spawn command.
+  # Default: world
+  spawn-world: "world"
+

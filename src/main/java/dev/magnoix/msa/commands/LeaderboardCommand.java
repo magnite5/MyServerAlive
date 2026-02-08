@@ -24,10 +24,9 @@ public class LeaderboardCommand {
         this.statisticsManager = statisticsManager;
         Set<String> validStats;
         try {
-            validStats = statisticsManager.getValidColumns();
-            Msg.log("(LB Command): Loaded statistics: " + validStats);
+            validStats = statisticsManager.getValidStatisticTypes();
         } catch (Exception e) {
-            Msg.log(Level.SEVERE, "(LB Command): Failed to load valid statistics: " + e.getMessage());
+            Msg.log(Level.SEVERE, "Leaderboard Command: Failed to load valid statistics: " + e.getMessage());
             e.printStackTrace();
             validStats = Set.of(); // Empty set as a fallback
         }
@@ -43,9 +42,7 @@ public class LeaderboardCommand {
                     }
                     return builder.buildFuture();
                 })
-                .executes(ctx -> {
-                    return handleLeaderboard(ctx, 1);
-                })
+                .executes(ctx -> handleLeaderboard(ctx, 1))
                 .then(Commands.argument("page", IntegerArgumentType.integer())
                     .executes(ctx -> {
                         int page = ctx.getArgument("page", Integer.class);

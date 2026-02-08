@@ -6,6 +6,8 @@ import io.papermc.paper.plugin.lifecycle.event.registrar.ReloadableRegistrarEven
 import io.papermc.paper.command.brigadier.Commands;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+
 public class StartupUtils {
     private StartupUtils() {}
 
@@ -18,5 +20,12 @@ public class StartupUtils {
         for (String alias : aliases) {
             commands.registrar().register(Commands.literal(alias).redirect(node).build());
         }
+    }
+
+    public static void registerCommandNodes(
+            ReloadableRegistrarEvent<@NotNull Commands> commands,
+            ArrayList<LiteralCommandNode<CommandSourceStack>> commandNodes
+    ) {
+        commandNodes.forEach(node -> commands.registrar().register(node));
     }
 }

@@ -1,9 +1,13 @@
 package dev.magnoix.msa.databases;
 
+import org.bukkit.plugin.java.JavaPlugin;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashSet;
+import java.util.Set;
 
 public class PluginDatabase {
 
@@ -11,13 +15,14 @@ public class PluginDatabase {
     private final StatisticsManager statisticsManager;
     private final TitleManager titleManager;
 
-    public PluginDatabase(String path) throws SQLException {
+    public PluginDatabase(JavaPlugin plugin, String path) throws SQLException {
         connection = DriverManager.getConnection("jdbc:sqlite:" + path);
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys = ON;");
         }
 
-        statisticsManager = new StatisticsManager(connection);
+        Set<String> loggedTypes = new HashSet<>(plugin.getConfig().getStringList("statistics.logged-types"));
+        statisticsManager = new StatisticsManager(plugin, connection, loggedTypes);
         titleManager = new TitleManager(connection);
     }
 

@@ -8,6 +8,7 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.TitleManager;
 import dev.magnoix.msa.menus.TitleMenu;
 import dev.magnoix.msa.messages.Msg;
+import dev.magnoix.msa.utils.CommandUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import org.bukkit.Bukkit;
@@ -17,8 +18,8 @@ import org.bukkit.entity.Player;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Predicate;
 
 public class TitleCommand {
     private TitleManager titleManager;
@@ -41,41 +42,23 @@ public class TitleCommand {
         return builder.buildFuture();
     }
 
-    public static SuggestionProvider<CommandSourceStack> onlinePlayerSuggestions() {
-        return (CommandContext<CommandSourceStack> context,SuggestionsBuilder builder) -> {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                builder.suggest(player.getName());
-            }
-            return CompletableFuture.completedFuture(builder.build());
-        };
-    }
-
-    private static Predicate<CommandSourceStack> requirePermission(String... perms) {
-        return src -> {
-            CommandSender sender = src.getSender();
-            for (String perm : perms) if (sender.hasPermission(perm)) return true;
-            return false;
-        };
-    }
-
-
-    public LiteralCommandNode<CommandSourceStack> create(TitleManager titleManager) {
+    public LiteralCommandNode<CommandSourceStack> create(String permissionPrefix, TitleManager titleManager) {
         this.titleManager = titleManager;
         this.titleMenu = new TitleMenu(titleManager);
         return Commands.literal("titles")
             .executes(this::commandGui)
             .then(Commands.literal("create")
-                .requires(requirePermission("msd.titles.create", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.create", ".titles.*", ".*"))
                 .then(Commands.argument("name", StringArgumentType.string())
                     .then(Commands.argument("prefix", StringArgumentType.greedyString())
                         .executes(ctx -> {
                             CommandSender sender = ctx.getSource().getSender();
                             String name = ctx.getArgument("name", String.class);
-                            String prefix = ctx.getArgument("prefix", String.class);
+                            String prefix = normalizePrefixArg(ctx.getArgument("prefix", String.class));
                             try {
                                 TitleManager.title newTitle = titleManager.createTitle(name, prefix);
+                                titleManager.syncTitleUpdate(newTitle.id(), true);
                                 Msg.miniMsg("<dark_aqua>Created the new <gold>\"<yellow>" + newTitle.name() + "<gold>\" <dark_aqua>title ID <i><dark_gray>" + newTitle.id() + "</i>", sender);
-                                if (name.charAt(name.length() - 1) != ' ') Msg.miniMsg("<yellow>Warning: There is no space at the end of the prefix; <i>The prefix will be stuck to the player's name in practice.</i>", sender);
                                 return 1;
                             } catch (TitleManager.DuplicateTitleException e) {
                                 Msg.miniMsg("<red>A title with the name <gold>\"<yellow>" + name + "<gold>\" <red> already exists.", sender);
@@ -86,7 +69,7 @@ public class TitleCommand {
                             }
                         }))))
             .then(Commands.literal("delete")
-                .requires(requirePermission("msd.titles.delete", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.delete", ".titles.*", ".*"))
                 .then(Commands.argument("name", StringArgumentType.string())
                     .suggests(this::suggestTitleNames)
                     .executes(ctx -> {
@@ -97,6 +80,10 @@ public class TitleCommand {
                             if (title != null) {
                                 titleManager.deleteTitle(title.id());
                                 Msg.miniMsg("<dark_aqua>Deleted the <gold>\"<yellow>" + name + "<gold>\" <dark_aqua>title, ID <i><dark_gray>" + title.id() + "</i>", sender);
+
+                                for (UUID uuid : titleManager.getPlayersWithActiveTitle(title.id())) {
+                                    titleManager.setActivePrefix(uuid, 1);
+                                }
                             } else Msg.miniMsg("<yellow>No title with the name <gold>\"<yellow>" + name + "<gold>\" <yellow>exists.", sender);
                             return 1;
                         } catch (Exception e) {
@@ -105,18 +92,21 @@ public class TitleCommand {
                         }
                     })))
             .then(Commands.literal("edit")
-                .requires(requirePermission("msd.titles.edit", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.edit", ".titles.*", ".*"))
                 .then(Commands.argument("name", StringArgumentType.string())
                     .suggests(this::suggestTitleNames)
                     .then(Commands.literal("prefix")
                         .then(Commands.argument("newPrefix", StringArgumentType.greedyString())
                             .executes(ctx -> {
-                                CommandSender sender =  ctx.getSource().getSender();
-                                String name =  ctx.getArgument("name", String.class);
-                                String newPrefix =  ctx.getArgument("newPrefix", String.class);
+                                CommandSender sender = ctx.getSource().getSender();
+                                String name = ctx.getArgument("name", String.class);
+
+                                String newPrefix = normalizePrefixArg(ctx.getArgument("newPrefix", String.class));
+
                                 try {
                                     TitleManager.title title = titleManager.getTitleFromName(name);
                                     TitleManager.title newTitle = titleManager.setTitlePrefix(title.id(), newPrefix);
+                                    titleManager.syncTitleUpdate(newTitle.id(), true);
                                     Msg.miniMsg("<dark_aqua>Updated the <gold>\"<yellow>" + newTitle.name() + "<gold>\" <dark_aqua>title's prefix.", sender);
                                     Msg.miniMsg("<dark_aqua>Old Prefix: <gold>\"" + title.prefix() + "<gold>\"<dark_aqua>. New Prefix: <gold>\"" + newTitle.prefix() + "<gold>\"<dark_aqua>.", sender);
                                     return 1;
@@ -142,9 +132,9 @@ public class TitleCommand {
                                 }
                             })))))
             .then(Commands.literal("sync")
-                .requires(requirePermission("msd.titles.sync", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.sync", ".titles.*", ".*"))
                 .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
+                    .suggests(CommandUtils.onlinePlayerSuggestions())
                     .executes(ctx -> {
                         CommandSender sender = ctx.getSource().getSender();
                         OfflinePlayer target = resolveTarget(ctx);
@@ -152,7 +142,7 @@ public class TitleCommand {
                             sender.sendMessage("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class));
                             return 0;
                         } try {
-                            titleManager.syncLuckPermsPrefix(target.getUniqueId());
+                            titleManager.syncLuckPermsPrefixAsync(target.getUniqueId());
                             Msg.miniMsg("<dark_aqua>Synced <gold>" + target.getName() + "<dark_aqua>'s <yellow>LuckPerms Prefix <dark_aqua>with their <yellow>Active Title.", sender);
                             return 1;
                         } catch (Exception e) {
@@ -161,11 +151,11 @@ public class TitleCommand {
                         }
                     })))
             .then(Commands.literal("player")
-                .requires(requirePermission("msd.titles.player", "msd.titles.*", "msd.*"))
+                .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.player", ".titles.*", ".*"))
                 .then(Commands.argument("target", StringArgumentType.word())
-                    .suggests(onlinePlayerSuggestions())
+                    .suggests(CommandUtils.onlinePlayerSuggestions())
                     .then(Commands.literal("active")
-                        .requires(requirePermission("msd.titles.player.active", "msd.titles.player.*", "msd.titles.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.player.active", ".titles.player.*", ".titles.*", ".*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
@@ -192,7 +182,7 @@ public class TitleCommand {
                                 }
                             })))
                     .then(Commands.literal("give")
-                        .requires(requirePermission("msd.titles.player.give", "msd.titles.player.*", "msd.titles.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.player.give", ".titles.player.*", ".titles.*", ".*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
@@ -218,7 +208,7 @@ public class TitleCommand {
                                 }
                             })))
                     .then(Commands.literal("revoke")
-                        .requires(requirePermission("msd.titles.player.give", "msd.titles.player.*", "msd.titles.*", "msd.*"))
+                        .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.player.give", ".titles.player.*", ".titles.*", ".*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)
                             .executes(ctx -> {
@@ -243,6 +233,28 @@ public class TitleCommand {
                                     return 0;
                                 }
                             }))))).build();
+    }
+
+    private static String normalizePrefixArg(String raw) {
+        if (raw == null) return null;
+
+        String s = raw;
+
+        // Strip wrapping quotes: "..." or '...'
+        if (s.length() >= 2) {
+            char first = s.charAt(0);
+            char last = s.charAt(s.length() - 1);
+            if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
+                s = s.substring(1, s.length() - 1);
+            }
+        }
+
+        // Explicit trailing space token
+        if (s.endsWith("\\s")) {
+            s = s.substring(0, s.length() - 2) + " ";
+        }
+
+        return s;
     }
 
     private boolean isTargetValid(OfflinePlayer target) {
