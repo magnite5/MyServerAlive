@@ -115,19 +115,30 @@ public class ConversionMenu {
         if (item == null || item.getType() == Material.AIR) return null;
 
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return null;
+        if (meta != null) {
+            String pdcType = meta.getPersistentDataContainer().get(ITEM_TYPE_KEY, PersistentDataType.STRING);
+            if (pdcType != null && !pdcType.isBlank()) {
+                return pdcType;
+            }
+        }
 
-        return meta.getPersistentDataContainer().get(ITEM_TYPE_KEY, PersistentDataType.STRING);
+        // Accept "vanilla" items (no PDC) as their base types.
+        return switch (item.getType()) {
+            case DRIED_KELP_BLOCK -> "KELP";
+            case SEA_PICKLE -> "PICKLE";
+            default -> null;
+        };
     }
+
     private int getItemValue(ItemStack item) {
         if (item == null || item.getType() == Material.AIR) return 0;
-        
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return 0;
-        
-        return getTypeValue(meta.getPersistentDataContainer().get(ITEM_TYPE_KEY, PersistentDataType.STRING)) * item.getAmount();
+
+        String type = getItemType(item);
+        if (type == null) return 0;
+
+        return getTypeValue(type) * item.getAmount();
     }
-    
+
     private int countItems(Player player, String type) {
         if (type == null) return 0;
 
@@ -344,7 +355,7 @@ public class ConversionMenu {
         return withdrawItems(player, type, max);
     }
 
-    private int getTypeValue(String type) {
+    private static int getTypeValue(String type) {
         if (type == null) return 0;
         return switch (type.toUpperCase()) {
             case "KELP" -> 1024;
@@ -355,7 +366,7 @@ public class ConversionMenu {
         };
     }
 
-    private String getTypeDisplay(String type, int amount) {
+    private static String getTypeDisplay(String type, int amount) {
         String typeDisplay = type.toLowerCase().replaceAll("_", " ");
         if (type.equalsIgnoreCase("kelp") || type.equalsIgnoreCase("compressed_kelp")) {
             return typeDisplay;
@@ -363,13 +374,13 @@ public class ConversionMenu {
             return typeDisplay += (amount == 1 ? "" : "s");
         }
     }
-    private String getCapitalizedTypeDisplay(String type, int amount) {
+    private static String getCapitalizedTypeDisplay(String type, int amount) {
         return TextUtils.capitalizeEach(getTypeDisplay(type, amount));
     }
-    private String getTypeDisplay(String type) {
+    private static String getTypeDisplay(String type) {
         return type.toLowerCase().replaceAll("_", " ");
     }
-    private String getCapitalizedTypeDisplay(String type) {
+    private static String getCapitalizedTypeDisplay(String type) {
         return TextUtils.capitalizeEach(getTypeDisplay(type));
     }
 
@@ -393,24 +404,28 @@ public class ConversionMenu {
         return count;
     }
 
-    public ItemStack sampleItem(String type) {
+    public static ItemStack sampleItem(String type, NamespacedKey itemTypeKey) {
         ItemStack item = switch (type.toUpperCase()) {
             case "COMPRESSED_KELP" -> ItemCreator.create(
-                Material.DRIED_KELP_BLOCK,
-                mm.deserialize("<!i><color:#3f4f2d>Compressed Kelp"),
-                true);
-            case "PICKLE" -> ItemCreator.create(Material.SEA_PICKLE);
+                    Material.DRIED_KELP_BLOCK,
+                    mm.deserialize("<!i><color:#3f4f2d>Compressed Kelp"),
+                    true);
+            case "PICKLE" -> ItemCreator.create(Material.SEA_PICKLE, mm.deserialize("<!i><color:#2f4f3d>Pickle"));
             case "COMPRESSED_PICKLE" -> ItemCreator.create(
-                Material.SEA_PICKLE,
-                mm.deserialize("<!i><color:#324f1e>Compressed Pickle"),
-                true);
-            default -> ItemCreator.create(Material.DRIED_KELP_BLOCK);
+                    Material.SEA_PICKLE,
+                    mm.deserialize("<!i><color:#324f1e>Compressed Pickle"),
+                    true);
+            default -> ItemCreator.create(Material.DRIED_KELP_BLOCK, mm.deserialize("<!i><color:#2f4f2d>" + getCapitalizedTypeDisplay(type)));
         };
 
         ItemMeta meta = item.getItemMeta();
-        meta.getPersistentDataContainer().set(ITEM_TYPE_KEY, PersistentDataType.STRING, type.toUpperCase());
+        meta.getPersistentDataContainer().set(itemTypeKey, PersistentDataType.STRING, type.toUpperCase());
         item.setItemMeta(meta);
         return item;
+    }
+
+    private ItemStack sampleItem(String type) {
+        return sampleItem(type, ITEM_TYPE_KEY);
     }
 
     ///  MENU ITEMS
