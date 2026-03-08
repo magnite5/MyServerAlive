@@ -193,8 +193,8 @@ public class ConversionMenu {
             int oldBalance = statisticsManager.addToStatistic(uuid, "networth", profit);
             int newBalance = oldBalance + profit;
 
-            Msg.miniMsg("<dark_aqua>- <aqua>" + amount + "<dark_aqua> Item " + (amount == 1 ? " " : "s ") +
-                "; + <aqua>" + profit + "<dark_aqua>nw" +
+            Msg.miniMsg("<dark_aqua>- <aqua>" + amount + "<dark_aqua> Item" + (amount == 1 ? "" : "s") +
+                "; + <aqua>" + profit + " <dark_aqua>nw" +
                 "; New Balance: <aqua>" + newBalance + "<dark_aqua>.", player);
             return newBalance;
         } catch (SQLException e) {
@@ -258,7 +258,7 @@ public class ConversionMenu {
         if (profit > 0) {
             try {
                 int newBalance = statisticsManager.addToStatistic(uuid, "networth", profit) + profit;
-                Msg.miniMsg("<dark_aqua>- <aqua>" + count + "<dark_aqua> Item" + (count == 1 ? " " : "s ") +
+                Msg.miniMsg("<dark_aqua>- <aqua>" + count + "<dark_aqua> Item" + (count == 1 ? "" : "s") +
                     "; + <aqua>" + profit + " <dark_aqua>nw" +
                     "; New Balance: <aqua>" + newBalance + "<dark_aqua>.", player);
                 return newBalance;

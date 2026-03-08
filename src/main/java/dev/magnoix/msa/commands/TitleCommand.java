@@ -155,6 +155,26 @@ public class TitleCommand {
                 .then(Commands.argument("target", StringArgumentType.word())
                     .suggests(CommandUtils.onlinePlayerSuggestions())
                     .then(Commands.literal("active")
+                            .executes(ctx -> {
+                                CommandSender sender = ctx.getSource().getSender();
+                                OfflinePlayer target = resolveTarget(ctx);
+                                if (!isTargetValid(target)) {
+                                    sender.sendMessage("<red>Unknown player: <yellow>" + ctx.getArgument("target", String.class));
+                                    return 0;
+                                }
+                                try {
+                                    TitleManager.title title = titleManager.getActiveTitle(target.getUniqueId());
+                                    if (title != null) {
+                                        Msg.miniMsg("<gold>" + target.getName() + "<dark_aqua>'s active title is <gold>\"<yellow>" + title.name() + "<gold>\"<dark_aqua>.", sender);
+                                    } else {
+                                        Msg.miniMsg("<gold>" + target.getName() + "<dark_aqua> has no active title.", sender);
+                                    }
+                                } catch (SQLException e) {
+                                    Msg.miniMsg("<red>An error occurred while retrieving " + target.getName() + "'s : <yellow>" + e.getMessage(), sender);
+                                    return 0;
+                                }
+                                return 1;
+                            })
                         .requires(CommandUtils.requirePermission(permissionPrefix, ".titles.player.active", ".titles.player.*", ".titles.*", ".*"))
                         .then(Commands.argument("name", StringArgumentType.string())
                             .suggests(this::suggestTitleNames)

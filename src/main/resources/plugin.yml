@@ -1,4 +1,4 @@
 name: msa
-version: '1.0.1'
+version: '1.0.2'
 main: dev.magnoix.msa.MSA
 api-version: '1.21'

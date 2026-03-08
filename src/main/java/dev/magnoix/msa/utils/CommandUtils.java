@@ -1,23 +1,24 @@
 package dev.magnoix.msa.utils;
 
-import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
 public class CommandUtils {
     public static SuggestionProvider<CommandSourceStack> onlinePlayerSuggestions() {
-        return (CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) -> {
+        return (context, builder) -> {
+            String input = builder.getRemaining().toLowerCase();
             for (Player player : Bukkit.getOnlinePlayers()) {
-                builder.suggest(player.getName());
+                String name = player.getName();
+                if (name.toLowerCase().startsWith(input)) {
+                    builder.suggest(name);
+                }
             }
-            return CompletableFuture.completedFuture(builder.build());
+            return builder.buildFuture();
         };
     }
 
