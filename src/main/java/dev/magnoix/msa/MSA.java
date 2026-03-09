@@ -8,6 +8,7 @@ import dev.magnoix.msa.events.MiscEvents;
 import dev.magnoix.msa.events.PlayerEvents;
 import dev.magnoix.msa.messages.Msg;
 import dev.magnoix.msa.utils.StartupUtils;
+import dev.magnoix.msa.utils.UpdateUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
@@ -28,6 +29,8 @@ public final class MSA extends JavaPlugin {
         - PAPI Support
      */
 
+    private static MSA instance;
+
     private PluginDatabase pluginDatabase;
     private BukkitScheduler scheduler;
 
@@ -35,6 +38,7 @@ public final class MSA extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        instance = this;
         Msg.init(this);
 
         try {
@@ -80,6 +84,7 @@ public final class MSA extends JavaPlugin {
             StartupUtils.registerCommandWithAliases(commands, titleNode, "tt", "ranks", "labels");
             StartupUtils.registerCommandNodes(commands, statsAliases.getAliases(true));
         });
+        UpdateUtils.scheduleUpdateCheck();
     }
 
     @Override
@@ -91,6 +96,8 @@ public final class MSA extends JavaPlugin {
             e.printStackTrace();
         }
     }
+
+    public static MSA getInstance() { return instance; }
 
     public BukkitScheduler getScheduler() { return scheduler; }
 }

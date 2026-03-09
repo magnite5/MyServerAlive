@@ -153,7 +153,7 @@ public class TitleManager {
                 title newDefault = createTitle("default", "default ");
                 Msg.log(Level.WARNING, "Created a new default title with ID " + newDefault.id());
             } else {
-                Msg.log("A default title exists with the ID " + title.id);
+                Msg.log("Found a default title with the ID " + title.id);
             }
         } catch (Exception e) {
             Msg.log(Level.SEVERE, "An error occurred while confirming the default title: " + e.getMessage());
