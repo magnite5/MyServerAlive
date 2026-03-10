@@ -66,7 +66,7 @@ public class UpdateUtils {
                         Msg.log(Level.INFO, "New release available: " + release.getTagName());
                         for (Player player : Bukkit.getOnlinePlayers()) {
                             if (player.hasPermission("msa.updates") || player.isOp()) {
-                                Msg.miniMsg("<gold>A new version of MSA is available. <aqua>" + currentVersion + "<dark_aqua> -> <gold>" + release.getTagName(), player);
+                                Msg.miniMsg("<gold>A new version of MSA is available. <aqua>" + currentVersion + "<dark_aqua> s-> <gold>" + release.getTagName(), player);
                                 Msg.miniMsg("<gold>Download it <aqua><u><click:open_url:" + release.getDownloadUrl() + ">here</click></u>", player);
                             }
                         }
