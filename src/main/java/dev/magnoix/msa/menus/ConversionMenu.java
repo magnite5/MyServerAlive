@@ -114,18 +114,11 @@ public class ConversionMenu {
     private String getItemType(ItemStack item) {
         if (item == null || item.getType() == Material.AIR) return null;
 
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            String pdcType = meta.getPersistentDataContainer().get(ITEM_TYPE_KEY, PersistentDataType.STRING);
-            if (pdcType != null && !pdcType.isBlank()) {
-                return pdcType;
-            }
-        }
+        boolean glowing = (item.hasItemMeta() && item.getItemMeta().hasEnchants()) || (item.hasItemMeta() && item.getItemMeta().hasEnchantmentGlintOverride());
 
-        // Accept "vanilla" items (no PDC) as their base types.
         return switch (item.getType()) {
-            case DRIED_KELP_BLOCK -> "KELP";
-            case SEA_PICKLE -> "PICKLE";
+            case DRIED_KELP_BLOCK -> glowing ? "COMPRESSED_KELP" : "KELP";
+            case SEA_PICKLE -> glowing ? "COMPRESSED_PICKLE" : "PICKLE";
             default -> null;
         };
     }
@@ -404,7 +397,7 @@ public class ConversionMenu {
         return count;
     }
 
-    public static ItemStack sampleItem(String type, NamespacedKey itemTypeKey) {
+    public static ItemStack sampleItem(String type) {
         ItemStack item = switch (type.toUpperCase()) {
             case "COMPRESSED_KELP" -> ItemCreator.create(
                     Material.DRIED_KELP_BLOCK,
@@ -418,14 +411,7 @@ public class ConversionMenu {
             default -> ItemCreator.create(Material.DRIED_KELP_BLOCK, mm.deserialize("<!i><color:#2f4f2d>" + getCapitalizedTypeDisplay(type)));
         };
 
-        ItemMeta meta = item.getItemMeta();
-        meta.getPersistentDataContainer().set(itemTypeKey, PersistentDataType.STRING, type.toUpperCase());
-        item.setItemMeta(meta);
         return item;
-    }
-
-    private ItemStack sampleItem(String type) {
-        return sampleItem(type, ITEM_TYPE_KEY);
     }
 
     ///  MENU ITEMS
@@ -490,9 +476,9 @@ public class ConversionMenu {
 //        lore.add(mm.deserialize("<!i> <gold>└ <aqua>" + maxAmount + " For <aqua>" + (typeValue * maxAmount)));
 
         ItemStack item = ItemCreator.create(material, mm.deserialize("<!i><green><b>DEPOSIT </b><gold>| " + typeDisplay), lore, isGlowing);
-        ItemMeta meta = item.getItemMeta();
-        meta.getPersistentDataContainer().set(ITEM_TYPE_KEY, PersistentDataType.STRING, type.toUpperCase());
-        item.setItemMeta(meta);
+//        ItemMeta meta = item.getItemMeta();
+//        meta.getPersistentDataContainer().set(ITEM_TYPE_KEY, PersistentDataType.STRING, type.toUpperCase());
+//        item.setItemMeta(meta);
         return item;
     }
     private ItemStack withdrawItem(int maxAmount, String type, Material material, boolean isGlowing) {
@@ -512,9 +498,9 @@ public class ConversionMenu {
 //        lore.add(mm.deserialize("<!i> <gold>└ <aqua>" + maxAmount + " For <aqua>" + (typeValue * maxAmount)));
 
         ItemStack item = ItemCreator.create(material, mm.deserialize("<!i><red><b>WITHDRAW </b><gold>| " + typeDisplay), lore, isGlowing);
-        ItemMeta meta = item.getItemMeta();
-        meta.getPersistentDataContainer().set(ITEM_TYPE_KEY, PersistentDataType.STRING, type.toUpperCase());
-        item.setItemMeta(meta);
+//        ItemMeta meta = item.getItemMeta();
+//        meta.getPersistentDataContainer().set(ITEM_TYPE_KEY, PersistentDataType.STRING, type.toUpperCase());
+//        item.setItemMeta(meta);
         return item;
     }
 }

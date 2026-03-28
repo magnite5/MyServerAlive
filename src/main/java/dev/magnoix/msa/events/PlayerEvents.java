@@ -58,7 +58,7 @@ public record PlayerEvents(StatisticsManager statisticsManager, TitleManager tit
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+//    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         // Prevent WorldGuard conflicts
         if (event.isCancelled()) return;
@@ -83,7 +83,7 @@ public record PlayerEvents(StatisticsManager statisticsManager, TitleManager tit
             if (type == Material.DRIED_KELP_BLOCK) typeString = "KELP";
             else typeString = "PICKLE";
 
-            ItemStack customDrop = ConversionMenu.sampleItem(typeString, new NamespacedKey(plugin, "item_type"));
+            ItemStack customDrop = ConversionMenu.sampleItem(typeString); //, new NamespacedKey(plugin, "item_type")
             customDrop.setAmount(amount);
 
             if (hasTelepathy) {

@@ -73,7 +73,7 @@ public final class MSA extends JavaPlugin {
             StatisticAliases statsAliases = new StatisticAliases(statisticsManager);
 
             commands.registrar().register(toggleNode);
-            commands.registrar().register(conversionNode);
+//            commands.registrar().register(conversionNode);
             commands.registrar().register(new SpawnCommand().create(this));
             StartupUtils.registerCommandWithAliases(commands, statisticNode, "statistic", "stat", "st");
             StartupUtils.registerCommandWithAliases(commands, leaderboardNode, "lb", "top");
