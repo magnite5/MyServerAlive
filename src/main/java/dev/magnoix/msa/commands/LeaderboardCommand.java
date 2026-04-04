@@ -91,7 +91,7 @@ public class LeaderboardCommand {
                 ? "<click:run_command:'/leaderboard " + type + " " + (page - 1) + "'><hover:show_text:'Go to previous page'><dark_aqua><u>«</u></hover></click>"
                 : "<gray>«</gray>";
             String nextButton = page < totalPages
-                ? "<click:run_command:'/leaderboard " + type + " " + (page + 1) + "'><hover:show_text:'Go to next page'><dark_aqua><u>»</u></hover></red></click>"
+                ? "<click:run_command:'/leaderboard " + type + " " + (page + 1) + "'><hover:show_text:'Go to next page'><dark_aqua><u>»</u></hover></click>"
                 : "<gray>»</gray>";
             Msg.msg("", sender);
             Msg.miniMsg(" <gold>--- | " + previousButton + " <dark_aqua>| " + nextButton, sender);
