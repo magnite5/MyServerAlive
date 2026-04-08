@@ -5,8 +5,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.StatisticsManager;
 import dev.magnoix.msa.messages.Msg;
@@ -18,14 +16,13 @@ import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Predicate;
 import java.util.logging.Level;
 
-public class StatisticCommand {
+public class StatisticCommand implements CommandUtils.Command {
     private final StatisticsManager statisticsManager;
     private final Set<String> VALID_STATISTICS;
     private final MiniMessage mm = MiniMessage.miniMessage();
@@ -47,7 +44,7 @@ public class StatisticCommand {
         this.VALID_STATISTICS = validStats;
     }
 
-    public LiteralCommandNode<CommandSourceStack> create() {
+    public LiteralCommandNode<CommandSourceStack> create(JavaPlugin plugin) {
         return Commands.literal("stats")
             .executes(this::overviewCommand)
                 .then(Commands.literal("help")

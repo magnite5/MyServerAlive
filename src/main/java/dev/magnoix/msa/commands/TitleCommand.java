@@ -2,9 +2,9 @@ package dev.magnoix.msa.commands;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import dev.magnoix.msa.MSA;
 import dev.magnoix.msa.databases.TitleManager;
 import dev.magnoix.msa.menus.TitleMenu;
 import dev.magnoix.msa.messages.Msg;
@@ -15,13 +15,16 @@ import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-public class TitleCommand {
+import static dev.magnoix.msa.MSA.permissionPrefix;
+
+public class TitleCommand implements CommandUtils.Command {
     private TitleManager titleManager;
     private TitleMenu titleMenu;
 
@@ -42,8 +45,9 @@ public class TitleCommand {
         return builder.buildFuture();
     }
 
-    public LiteralCommandNode<CommandSourceStack> create(String permissionPrefix, TitleManager titleManager) {
-        this.titleManager = titleManager;
+    public LiteralCommandNode<CommandSourceStack> create(JavaPlugin plugin) {
+        if (plugin instanceof MSA msa) this.titleManager = msa.getPluginDatabase().getTitleManager();
+        else throw new IllegalArgumentException("Given Plugin must be an instance of MSA.");
         this.titleMenu = new TitleMenu(titleManager);
         return Commands.literal("titles")
             .executes(this::commandGui)

@@ -2,6 +2,7 @@ package dev.magnoix.msa.commands;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.messages.Msg;
+import dev.magnoix.msa.utils.CommandUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import org.bukkit.Bukkit;
@@ -12,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Objects;
 
-public class SpawnCommand {
+public class SpawnCommand implements CommandUtils.Command {
     public LiteralCommandNode<CommandSourceStack> create(JavaPlugin plugin) {
         String spawnWorld = plugin.getConfig().getString("settings.spawn-world");
 

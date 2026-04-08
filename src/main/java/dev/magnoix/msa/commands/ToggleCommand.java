@@ -6,6 +6,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.messages.Msg;
+import dev.magnoix.msa.utils.CommandUtils;
 import dev.magnoix.msa.utils.TextUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -27,13 +28,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ToggleCommand {
-    private final JavaPlugin plugin;
+public class ToggleCommand implements CommandUtils.Command {
+    private JavaPlugin plugin;
     private final FileConfiguration config;
     private List<String> toggleableEnchants;
 
     public ToggleCommand(JavaPlugin plugin) {
-        this.plugin = plugin;
         this.config = plugin.getConfig();
 
         this.toggleableEnchants = new ArrayList<>();
@@ -50,7 +50,8 @@ public class ToggleCommand {
         };
     }
 
-    public LiteralCommandNode<CommandSourceStack> create() {
+    public LiteralCommandNode<CommandSourceStack> create(JavaPlugin plugin) {
+        this.plugin = plugin;
         return Commands.literal("toggle")
             .executes(ctx -> {
                 CommandSender sender = ctx.getSource().getSender();

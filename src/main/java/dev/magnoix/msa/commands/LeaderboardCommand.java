@@ -6,17 +6,19 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.magnoix.msa.databases.StatisticsManager;
 import dev.magnoix.msa.messages.Msg;
+import dev.magnoix.msa.utils.CommandUtils;
 import dev.magnoix.msa.utils.TextUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 
-public class LeaderboardCommand {
+public class LeaderboardCommand implements CommandUtils.Command {
     private final StatisticsManager statisticsManager;
     private final Set<String> VALID_STATISTICS;
 
@@ -33,7 +35,7 @@ public class LeaderboardCommand {
         this.VALID_STATISTICS = validStats;
     }
 
-    public LiteralCommandNode<CommandSourceStack> create() {
+    public LiteralCommandNode<CommandSourceStack> create(JavaPlugin plugin) {
         return Commands.literal("leaderboard")
             .then(Commands.argument("type", StringArgumentType.word())
                 .suggests((context, builder) -> {
