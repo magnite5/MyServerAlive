@@ -8,7 +8,7 @@ toggleable-enchants:
   - "knockback"
   - "thorns"
 
-  # Config section for anything relating to Statistics
+# Config section for anything relating to Statistics
 statistics:
   # Extra statistic types to consider valid.
   # The plugin is hardcoded to include kills, deaths and networth. These cannot be added or removed.
@@ -21,6 +21,17 @@ statistics:
   # Includes "networth" by default
   logged-types:
     - "networth"
+
+  # Interval in seconds for writing statistics changes to disk.
+  # Unwritten changes will be lost if the server crashes.
+  # Default: 60
+  write-interval: 60
+  # Whether to write statistics changes to disk when a player leaves the server.
+  # Default: true
+  write-on-quit: true
+  # Whether to write statistics changes to disk when a player joins the server.
+  # Default: false
+  write-on-join: false
 
 settings:
   # The main permission section to use for player permissions.

@@ -16,6 +16,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 
 import java.sql.SQLException;
+import java.util.logging.Level;
 
 public final class MSA extends JavaPlugin {
 
@@ -57,7 +58,14 @@ public final class MSA extends JavaPlugin {
         statisticsManager.updateStatisticTypes(this);
 
         getServer().getPluginManager().registerEvents(new MiscEvents(), this);
-        getServer().getPluginManager().registerEvents(new PlayerEvents(statisticsManager, pluginDatabase.getTitleManager(), getPlugin(MSA.class)), this);
+        getServer().getPluginManager().registerEvents(
+            new PlayerEvents(
+                statisticsManager,
+                pluginDatabase.getTitleManager(),
+                getPlugin(MSA.class),
+                config.getBoolean("statistics.write-on-quit"),
+                config.getBoolean("statistics.write-on-join")),
+            this);
 
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             StatisticCommand statisticCommand = new StatisticCommand(permissionPrefix, statisticsManager);
@@ -80,15 +88,18 @@ public final class MSA extends JavaPlugin {
             StartupUtils.registerCommandWithAliases(commands, titleNode, "tt", "ranks", "labels");
             StartupUtils.registerCommandNodes(commands, statsAliases.getAliases(true));
         });
+
+        StartupUtils.scheduleStatisticsFlush(this, statisticsManager);
     }
 
     @Override
     public void onDisable() {
         // Plugin shutdown logic
         try {
+            pluginDatabase.getStatisticsManager().flushCache();
             pluginDatabase.closeConnection();
         } catch (SQLException e) {
-            e.printStackTrace();
+            Msg.log(Level.SEVERE, "Error flushing / closing connection: " + e.getMessage());
         }
     }
 

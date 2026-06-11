@@ -12,6 +12,9 @@ import java.util.logging.Level;
 public class StatisticsManager {
     //TODO: Use Long or Double instead of int for statistic values
 
+    private final Map<UUID, Map<String, Integer>> playerStats = new HashMap<>();
+    private final Set<UUID> dirtyPlayers = new HashSet<>();
+
     private final Connection connection;
 
     private final FileLogger statsLogger;
@@ -19,7 +22,7 @@ public class StatisticsManager {
 
     private Set<String> validTypes;
 
-    public StatisticsManager(JavaPlugin plugin, Connection connection, Set<String> loggedTypes ) throws SQLException {
+    public StatisticsManager(JavaPlugin plugin, Connection connection, Set<String> loggedTypes) throws SQLException {
         this.connection = connection;
         try (Statement statement = connection.createStatement()) {
             statement.execute("""
@@ -67,25 +70,78 @@ public class StatisticsManager {
         return validTypes;
     }
 
-    /// PLAYER MANIPULATION
+    /// CACHE MANIPULATION
+    public void addPlayer(UUID uuid) throws SQLException{
+        Map<String, Integer> stats = new HashMap<>();
+        if (playerStats.containsKey(uuid)) return;
 
-    /**
-     * Adds a new player to the statistics database.
-     * @param uuid The UUID of the player to add.
-     * @throws SQLException If a database access error occurs.
-     */
-    public void addPlayer(UUID uuid) throws SQLException {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT OR IGNORE INTO player_stats (uuid, type, value) VALUES (?, ?, 0)")) {
-            for (String type : validTypes) {
-                preparedStatement.setString(1, uuid.toString());
-                preparedStatement.setString(2, type);
-                preparedStatement.addBatch();
+        try (PreparedStatement preparedStatement = connection.prepareStatement(
+                "SELECT type, value FROM player_stats WHERE uuid = ?")) {
+            preparedStatement.setString(1, uuid.toString());
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    stats.put(resultSet.getString("type"), resultSet.getInt("value"));
+                }
+            }
+        }
+
+        if (stats.isEmpty()) {
+            validTypes.forEach(type -> stats.put(type, 0));
+        }
+
+        playerStats.put(uuid, stats);
+        dirtyPlayers.add(uuid);
+    }
+
+    public void flushCache(UUID uuid) throws SQLException {
+        if (!playerStats.containsKey(uuid)) return;
+
+        Map<String, Integer> stats = playerStats.get(uuid);
+        if (dirtyPlayers.contains(uuid)) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                INSERT INTO player_stats (uuid, type, value) VALUES (?, ?, ?)
+                ON CONFLICT (uuid, type) DO UPDATE SET value = excluded.value
+                """)) {
+                for (Map.Entry<String, Integer> entry : stats.entrySet()) {
+                    preparedStatement.setString(1, uuid.toString());
+                    preparedStatement.setString(2, entry.getKey());
+                    preparedStatement.setInt(3, entry.getValue());
+                    preparedStatement.addBatch();
+                }
+                preparedStatement.executeBatch();
+            }
+            dirtyPlayers.remove(uuid);
+        }
+
+        playerStats.keySet().removeIf(key -> Bukkit.getPlayer(key) == null);
+    }
+
+    public void flushCache() throws SQLException {
+        if (dirtyPlayers.isEmpty() || playerStats.isEmpty()) return;
+        Set<UUID> flushedPlayers = new HashSet<>();
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                INSERT INTO player_stats (uuid, type, value) VALUES (?, ?, ?)
+                ON CONFLICT (uuid, type) DO UPDATE SET value = excluded.value
+                """)) {
+            for (Map.Entry<UUID, Map<String, Integer>> entry : playerStats.entrySet()) {
+                UUID uuid = entry.getKey();
+                if (dirtyPlayers.contains(uuid)) {
+                    for (Map.Entry<String, Integer> stat : entry.getValue().entrySet()) {
+                        preparedStatement.setString(1, uuid.toString());
+                        preparedStatement.setString(2, stat.getKey());
+                        preparedStatement.setInt(3, stat.getValue());
+                        preparedStatement.addBatch();
+                    }
+                }
+                flushedPlayers.add(uuid);
             }
             preparedStatement.executeBatch();
-            String playerName = Bukkit.getOfflinePlayer(uuid).getName();
-            Msg.log(Level.WARNING, "Player " + (playerName != null ? playerName : uuid.toString()) + " has been added to the statistics database.");
         }
+        dirtyPlayers.removeAll(flushedPlayers);
+        playerStats.keySet().removeIf(key -> Bukkit.getPlayer(key) == null);
     }
+
+    /// PLAYER MANIPULATION
 
     /**
      * Removes a player from the statistics database.
@@ -99,6 +155,7 @@ public class StatisticsManager {
             String playerName = Bukkit.getOfflinePlayer(uuid).getName();
             Msg.log(Level.WARNING, "Player " + (playerName != null ? playerName : uuid.toString()) + " has been removed from the statistics database.");
         }
+        playerStats.remove(uuid);
     }
 
     /**
@@ -107,12 +164,19 @@ public class StatisticsManager {
      * @throws SQLException If a database access error occurs.
      */
     public void resetPlayer(UUID uuid) throws SQLException {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE player_stats SET value = 0 WHERE uuid = ?")) {
-            preparedStatement.setString(1, uuid.toString());
-            int updated = preparedStatement.executeUpdate();
-            String playerName = Bukkit.getOfflinePlayer(uuid).getName();
-            Msg.log(Level.WARNING, "Player " + (playerName != null ? playerName : uuid) + "'s " + updated + " statistic" + (updated == 1 ? "s" : "") + " has been reset.");
+        if (!playerStats.containsKey(uuid)) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE player_stats SET value = 0 WHERE uuid = ?")) {
+                preparedStatement.setString(1, uuid.toString());
+                int updated = preparedStatement.executeUpdate();
+                String playerName = Bukkit.getOfflinePlayer(uuid).getName();
+            }
+        } else {
+            Map<String, Integer> stats = playerStats.get(uuid);
+            playerStats.get(uuid).replaceAll((type, value) -> 0);
+            dirtyPlayers.add(uuid);
         }
+        String playerName = Bukkit.getOfflinePlayer(uuid).getName();
+        Msg.log(Level.WARNING, "Player " + (playerName != null ? playerName : uuid) + "'s statistics have been reset.");
     }
 
     /**
@@ -122,6 +186,9 @@ public class StatisticsManager {
      * @throws SQLException If a database access error occurs.
      */
     public boolean playerExists(UUID uuid) throws SQLException {
+        if (playerStats.containsKey(uuid)) {
+            return true;
+        }
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT 1 FROM player_stats WHERE uuid = ? LIMIT 1")) {
             preparedStatement.setString(1, uuid.toString());
             return preparedStatement.executeQuery().next();
@@ -141,6 +208,10 @@ public class StatisticsManager {
     public int getStatistic(UUID uuid, String type) throws SQLException {
         type = type.trim().toLowerCase();
         if (!validTypes.contains(type)) throw new IllegalArgumentException("Unknown statistic type: " + type);
+
+        if (playerStats.containsKey(uuid)) {
+            return playerStats.get(uuid).getOrDefault(type, 0);
+        }
 
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT value FROM player_stats WHERE uuid = ? AND type = ?")) {
             preparedStatement.setString(1, uuid.toString());
@@ -165,27 +236,15 @@ public class StatisticsManager {
     public int setStatistic(UUID uuid, String type, int value) throws SQLException {
         type = type.trim().toLowerCase();
         if (!validTypes.contains(type)) throw new IllegalArgumentException("Invalid Statistic: " + type);
-        if (!playerExists(uuid)) addPlayer(uuid);
+
+        if (!playerStats.containsKey(uuid)) addPlayer(uuid);
 
         int oldValue = getStatistic(uuid, type);
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE player_stats SET value = ? WHERE uuid = ? AND type = ?")) {
-            preparedStatement.setInt(1, value);
-            preparedStatement.setString(2, uuid.toString());
-            preparedStatement.setString(3, type);
-            int updated = preparedStatement.executeUpdate();
+        playerStats.get(uuid).put(type, value);
+        dirtyPlayers.add(uuid);
 
-            if (updated == 0) {
-                try (PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO player_stats (uuid, type, value) VALUES (?, ?, ?)")) {
-                    insertStatement.setString(1, uuid.toString());
-                    insertStatement.setString(2, type);
-                    insertStatement.setInt(3, value);
-                    insertStatement.executeUpdate();
-                }
-            }
-        }
-        if (loggedTypes.contains(type))
-            statsLogger.log("Set " + type + " for " + uuid + " from " + oldValue + " to " + value + ".");
+        logIfLogged(type, "Set " + type + " for " + uuid + " from " + oldValue + " to " + value + ".");
         return oldValue;
     }
 
@@ -200,23 +259,13 @@ public class StatisticsManager {
     public int addToStatistic(UUID uuid, String type, int value) throws SQLException {
         type = type.trim().toLowerCase();
         if (!validTypes.contains(type)) throw new IllegalArgumentException("Invalid Statistic: " + type);
-        if (!playerExists(uuid)) addPlayer(uuid);
+        if (!playerStats.containsKey(uuid)) addPlayer(uuid);
 
         int oldValue = getStatistic(uuid, type);
+        playerStats.get(uuid).put(type, oldValue + value);
+        dirtyPlayers.add(uuid);
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement("""
-            INSERT INTO player_stats (uuid, type, value) VALUES (?, ?, ?)
-            ON CONFLICT (uuid, type) DO UPDATE SET value = player_stats.value + excluded.value
-        """)) {
-            preparedStatement.setString(1, uuid.toString());
-            preparedStatement.setString(2, type);
-            preparedStatement.setInt(3, value);
-            preparedStatement.executeUpdate();
-        }
-
-        if (loggedTypes.contains(type)) {
-            statsLogger.log("Added " + value + " to " + type + " for " + uuid + ", from " + oldValue + " to " + (oldValue + value) + ".");
-        }
+        logIfLogged(type, "Added " + value + " to " + type + " for " + uuid + ", from " + oldValue + " to " + (oldValue + value) + ".");
         return oldValue;
     }
 
@@ -233,9 +282,7 @@ public class StatisticsManager {
         int oldValue = getStatistic(uuid, type); // Already checking for type validity.
         setStatistic(uuid, type, (int) (oldValue * multiplier));
 
-        if (loggedTypes.contains(type)) {
-            statsLogger.log("Multiplied " + type + " for " + uuid + " by " + multiplier + " from " + oldValue + " to " + (oldValue * multiplier) + ".");
-        }
+        logIfLogged(type, "Multiplied " + type + " for " + uuid + " by " + multiplier + " from " + oldValue + " to " + (oldValue * multiplier) + ".");
         return oldValue;
     }
 
@@ -257,21 +304,8 @@ public class StatisticsManager {
         return 0;
     }
 
-    /**
-     * Convenience method for adding a number of kills for a player.
-     */
-    public void addKills(UUID uuid, int kills) throws SQLException {
-        addToStatistic(uuid, "kills", kills);
-    }
-
-    /**
-     * Convenience method for adding a number of deaths for a player.
-     */
-    public void addDeaths(UUID uuid, int deaths) throws SQLException {
-        addToStatistic(uuid, "deaths", deaths);
-    }
-
     /// LEADERBOARDS
+    //TODO: Add Caches for each leaderboard
 
     public record LeaderboardEntry(UUID player, double value, int position) {}
 
