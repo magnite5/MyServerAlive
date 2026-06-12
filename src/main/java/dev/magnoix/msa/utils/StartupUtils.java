@@ -93,4 +93,5 @@ public class StartupUtils {
                 Msg.log(Level.SEVERE, "Failed to rebuild leaderboard cache: " + e.getMessage());
             }
         }, rebuildInterval, rebuildInterval);
+    }
 }
