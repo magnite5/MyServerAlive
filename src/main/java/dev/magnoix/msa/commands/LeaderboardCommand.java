@@ -27,7 +27,6 @@ public class LeaderboardCommand {
             validStats = statisticsManager.getValidStatisticTypes();
         } catch (Exception e) {
             Msg.log(Level.SEVERE, "Leaderboard Command: Failed to load valid statistics: " + e.getMessage());
-            e.printStackTrace();
             validStats = Set.of(); // Empty set as a fallback
         }
         this.VALID_STATISTICS = validStats;
@@ -61,9 +60,9 @@ public class LeaderboardCommand {
             return 0;
         }
         try {
-            int limit = 10;
-            int totalEntries = statisticsManager.getStatisticCount(type);
-            int totalPages = (int) Math.ceil((double) totalEntries / limit);
+            int pageSize = 10;
+            int totalEntries = statisticsManager.getLeaderboard(type).size();
+            int totalPages = (int) Math.ceil((double) totalEntries / pageSize);
 
             if (totalPages == 0) {
                 Msg.miniMsg("<dark_aqua>There are no pages in the <yellow>" + type + " <dark_aqua>leaderboard.", sender);
@@ -72,18 +71,20 @@ public class LeaderboardCommand {
 
             if (page < 1) page = 1;
             if (page > totalPages) page = totalPages;
-            int offset = (page - 1) * limit;
+            int startIndex = (page - 1) * pageSize;
+            int endIndex = Math.min(startIndex + pageSize, totalEntries);
 
-            List<StatisticsManager.LeaderboardEntry> leaderboard = statisticsManager.getTopPlayers(type, limit, offset);
+            List<StatisticsManager.LeaderboardEntry> leaderboard = statisticsManager.getTopPlayers(type, startIndex, endIndex);
             if (leaderboard.isEmpty()) {
                 Msg.miniMsg("<dark_aqua>There are no entries in the <yellow>" + type + " <dark_aqua>leaderboard.", sender);
                 return 1;
             }
             Msg.msg("", sender);
             Msg.miniMsg(" <red>--- <gold>| <dark_aqua><u>" + typeCapitalized + "</u> <gold>(<red>" + page + "<gold> / <red>" + totalPages + "<gold>)", sender);
-            for (StatisticsManager.LeaderboardEntry entry : leaderboard) {
+            for (int i = 0; i < leaderboard.size(); i++) {
+                StatisticsManager.LeaderboardEntry entry = leaderboard.get(i);
                 String playerName = Bukkit.getOfflinePlayer(entry.player()).getName();
-                Msg.miniMsg("  <red>" + entry.position() + ". <gold>" + playerName + "<dark_aqua>: <aqua>" + String.format("%,.0f", entry.value()), sender);
+                Msg.miniMsg("  <red>" + (startIndex + i + 1) + ". <gold>" + playerName + "<dark_aqua>: <aqua>" + String.format("%,.0f", entry.value()), sender);
             }
             Msg.miniMsg(" <red>--- <gold>| <dark_aqua><u>" + typeCapitalized + "</u> <gold>(<red>" + page + "<gold> / <red>" + totalPages + "<gold>)", sender);
             // Button Logic
@@ -99,7 +100,7 @@ public class LeaderboardCommand {
             return 1;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Msg.log(Level.SEVERE, "Failed to retrieve leaderboard page " + page + " for " + type + ":" + e.getMessage());
             Msg.miniMsg("<red>An error occurred while retrieving the leaderboard data.", sender);
             return 0;
         }

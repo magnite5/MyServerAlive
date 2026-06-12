@@ -89,7 +89,8 @@ public final class MSA extends JavaPlugin {
             StartupUtils.registerCommandNodes(commands, statsAliases.getAliases(true));
         });
 
-        StartupUtils.scheduleStatisticsFlush(this, statisticsManager);
+        StartupUtils.scheduleStatisticsFlush(this, statisticsManager, config.getBoolean("statistics.log-writes"));
+        StartupUtils.scheduleLeaderboardRebuild(this, statisticsManager, config.getBoolean("leaderboards.log-rebuilds"));
     }
 
     @Override

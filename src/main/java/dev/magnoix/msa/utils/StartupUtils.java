@@ -35,16 +35,35 @@ public class StartupUtils {
         commandNodes.forEach(node -> commands.registrar().register(node));
     }
 
-    public static void scheduleStatisticsFlush(MSA msa, StatisticsManager statisticsManager) {
+    public static void scheduleStatisticsFlush(MSA msa, StatisticsManager statisticsManager, boolean logEachTime) {
         long flushInterval = msa.getConfig().getLong("statistics.write-interval") * 20; // ticks
-
+        if (flushInterval <= 0) {
+            Msg.log(Level.WARNING, "Statistics flush interval is set to 0 or an invalid number. Defaulting to 60 seconds.");
+            flushInterval = 60 * 20;
+        }
         Bukkit.getScheduler().runTaskTimer(msa, () -> {
             try {
-                Msg.log(Level.INFO, "Flushing statistics cache...");
+                if (logEachTime) Msg.log(Level.INFO, "Flushing statistics cache...");
                 statisticsManager.flushCache();
             } catch (SQLException e) {
-                Msg.log(Level.SEVERE, "Failed to flush statstics cache: " + e.getMessage());
+                Msg.log(Level.SEVERE, "Failed to flush statistics cache: " + e.getMessage());
             }
         }, flushInterval, flushInterval);
+    }
+
+    public static void scheduleLeaderboardRebuild(MSA msa, StatisticsManager statisticsManager, boolean logEachTime) {
+        long rebuildInterval = msa.getConfig().getLong("leaderboards.rebuild-interval") * 20;
+        if (rebuildInterval <= 0) {
+            Msg.log(Level.WARNING, "Leaderboard rebuild interval is set to 0 or an invalid number. Defaulting to 240 seconds.");
+            rebuildInterval = 240 * 20;
+        }
+        Bukkit.getScheduler().runTaskTimer(msa, () -> {
+            try {
+                if (logEachTime) Msg.log(Level.INFO, "Rebuilding leaderboard cache...");
+                statisticsManager.rebuildLeaderboardCache();
+            } catch (SQLException e) {
+                Msg.log(Level.SEVERE, "Failed to rebuild leaderboard cache: " + e.getMessage());
+            }
+        }, rebuildInterval, rebuildInterval);
     }
 }
