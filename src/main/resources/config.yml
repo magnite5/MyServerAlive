@@ -8,7 +8,6 @@ toggleable-enchants:
   - "knockback"
   - "thorns"
 
-  # Config section for anything relating to Statistics
 statistics:
   # Extra statistic types to consider valid.
   # The plugin is hardcoded to include kills, deaths and networth. These cannot be added or removed.
@@ -21,6 +20,36 @@ statistics:
   # Includes "networth" by default
   logged-types:
     - "networth"
+
+  # Interval in seconds for writing statistics changes to disk.
+  # Unwritten changes will be lost if the server crashes.
+  # Default: 60
+  write-interval: 60
+  # Whether to write statistics changes to disk when a player leaves the server.
+  # Default: true
+  write-on-quit: true
+  # Whether to write statistics changes to disk when a player joins the server.
+  # Default: false
+  write-on-join: false
+  # Whether to log when the cache is being written to disk.
+  # Warning: Can cause spam. Useful for debug.
+  # Default: false
+  log-writes: false
+
+leaderboards:
+  # Interval in seconds for rebuilding the leaderboard.
+  # The leaderboard is updated every time the statistics are written to disk.
+  # Rebuilding the leaderboard adds missing entries, mainly used when a player falls out of the top 100.
+  # Default: 300
+  rebuild-interval: 300
+  # Whether to log when the leaderboard is being rebuilt.
+  # Warning: Can cause spam. Useful for debug.
+  # Default: false
+  log-rebuilds: false
+  # Leaderboard size. Increasing this value will increase memory usage.
+  # Will be rounded down to the nearest multiple of 10.
+  # Default: 100
+  size: 100
 
 settings:
   # The main permission section to use for player permissions.

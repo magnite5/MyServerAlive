@@ -11,14 +11,13 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.type.SeaPickle;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.sql.SQLException;
@@ -26,21 +25,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
-public record PlayerEvents(StatisticsManager statisticsManager, TitleManager titleManager, JavaPlugin plugin) implements Listener {
+public record PlayerEvents(StatisticsManager statisticsManager, TitleManager titleManager, JavaPlugin plugin, Boolean writeOnQuit, Boolean writeOnJoin) implements Listener {
 
     @EventHandler
     public void playerDeath(PlayerDeathEvent event) {
         Player p = event.getEntity();
         Player k = p.getKiller();
         try {
-            statisticsManager.addDeaths(p.getUniqueId(), 1);
+            statisticsManager.addToStatistic(p.getUniqueId(), "deaths", 1);
         } catch (SQLException e) {
             e.printStackTrace();
         }
         if (k != null) try {
-            statisticsManager.addKills(k.getUniqueId(), 1);
+            statisticsManager.addToStatistic(k.getUniqueId(), "kills", 1);
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    @EventHandler
+    public void playerQuit(PlayerQuitEvent event) {
+        if (writeOnQuit) {
+            try {
+                statisticsManager.flushCache();
+            } catch (SQLException e) {
+                Msg.log(Level.SEVERE, "Failed to flush statistics cache: " + e.getMessage());
+            }
         }
     }
 
@@ -54,6 +64,13 @@ public record PlayerEvents(StatisticsManager statisticsManager, TitleManager tit
                 statisticsManager.addPlayer(player.getUniqueId());
             } catch (SQLException e) {
                 Msg.log(Level.SEVERE, "Failed to add player to statistics manager: " + e.getMessage());
+            }
+        }
+        if (writeOnJoin) {
+            try {
+                statisticsManager.flushCache();
+            } catch (SQLException e) {
+                Msg.log(Level.SEVERE, "Failed to flush statistics cache: " + e.getMessage());
             }
         }
     }
